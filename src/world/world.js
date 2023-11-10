@@ -1,10 +1,10 @@
-import { AnimationMixer, LoopRepeat } from 'three';
+import { AnimationMixer, LoopRepeat, QuaternionKeyframeTrack, VectorKeyframeTrack } from 'three';
 import { createCamera } from './components/camera.js';
 import { createCube } from './components/cube.js';
 import { createLights } from './components/lights.js';
 import { createScene } from './components/scene.js';
 import { createControls } from './systems/controls.js';
-import { loadHookAnimation, loadMen, menLoadingManager} from "./systems/fbxLoader.js"
+import { loadMen, menLoadingManager, loadAnimation} from "./systems/fbxLoader.js"
 
 import { createRenderer } from './systems/renderer.js';
 import { Resizer } from './systems/resizer.js';
@@ -35,17 +35,26 @@ class World {
 
   async init(){
     const men = await loadMen();
-    const hookAnim = await loadHookAnimation();
-    const loadingManager = menLoadingManager;
+
+    let animations = await this.createAnimationsArray(
+      [
+        'assets/animations/rightHook.fbx',
+        'assets/animations/handRaising.fbx',
+        'assets/animations/fistPump.fbx'
+      ]);
+      let actionsArray = [];
+
+    this.normalizeTimeTracks(animations);
     
     mixer = new AnimationMixer(men);
-    const action = mixer.clipAction(hookAnim.animations[0]);
 
-    action.setLoop(LoopRepeat, Infinity);
-    action.play();
+    actionsArray = this.clipActions(mixer, animations);
+    this.setupActions(actionsArray);
+
+    console.log(animations);
+
     menLoadingManager.onLoad = this.render;
 
-    console.log(hookAnim.animations[0]);
     men.position.set(0,0,3);
     men.scale.set(.01,.01,.01);
     scene.add(men);
@@ -65,6 +74,68 @@ class World {
     return mixer;
   }
 
+  normalizeTimeTracks(actionArray){
+    //find biggest timeTrack
+    //set all timeTracks in both to biggest timeTrack
+    let biggestTimeTrack = this.findBiggestTimeTrack(actionArray);
+    console.log(biggestTimeTrack);
+
+    actionArray.forEach(action => {
+      action.tracks.forEach(track => {
+        const scaleFactor = biggestTimeTrack.length / track.times.length;
+  
+        track.times = track.times.map(time => time * scaleFactor);
+      });
+      
+      action.duration = biggestTimeTrack[biggestTimeTrack.length - 1];
+    });
+  }
+
+  findBiggestTimeTrack(actionArray){
+    let biggestTimeTrack = null;
+
+    actionArray.forEach(action => {
+      action.tracks.forEach(track => {
+        if(biggestTimeTrack == null || 
+           track.times.length > biggestTimeTrack.length){
+            biggestTimeTrack = track.times;
+        }
+      });
+    });
+
+    return biggestTimeTrack;
+  }
+
+  async createAnimationsArray(animationsPathArray){
+    let animationsArray = [];
+
+    for (const path of animationsPathArray) {
+      const animation = await loadAnimation(path);
+      animationsArray.push(animation);
+    }
+
+    return animationsArray;
+  }
+
+  clipActions(mixer, animationsArray){
+    let actionArray = [];
+    let newAction;
+
+    animationsArray.forEach(animation => {
+      newAction = mixer.clipAction(animation);
+      actionArray.push(newAction);
+    });
+
+    return actionArray;
+  }
+
+  setupActions(actionArray){
+    actionArray.forEach(action => {
+      action.setLoop(LoopRepeat, Infinity);
+      action.setEffectiveWeight(0.5);
+      action.play();
+    });
+  }
 }
 
 export { World };

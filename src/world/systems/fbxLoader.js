@@ -11,11 +11,11 @@ async function loadMen(){
   return men;
 }
 
-async function loadHookAnimation(){
+async function loadAnimation(animationPath){
   const loader = new FBXLoader();
 
-  const hookAnimation = await loader.loadAsync('assets/animations/rightHook.fbx');
-  return hookAnimation;
+  const animation = await loader.loadAsync(animationPath);
+  return animation.animations[0];
 }
 
-export {loadMen, loadHookAnimation, menLoadingManager};
+export {loadMen, loadAnimation, menLoadingManager};
