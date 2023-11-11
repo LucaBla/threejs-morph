@@ -18,6 +18,48 @@
     <div id="scene-container">
     
     </div>
+    <div id="controls-wrapper">
+
+      <label>Punch</label>
+      <input 
+        type="number" 
+        class="weight-input" 
+        min="0" 
+        max="100" 
+        value="0"
+      >
+
+      <label>Raise</label>
+      <input 
+        type="number" 
+        class="weight-input" 
+        min="0" 
+        max="100" 
+        value="0"
+      >
+
+      <label>Pump</label>
+      <input 
+        type="number" 
+        class="weight-input" 
+        min="0" 
+        max="100" 
+        value="0"
+      >
+
+      <button id="start-btn">Start</button>
+
+      <div id="unassigned-weights-wrapper">
+        <label>Unassigned Weights:</label>
+        <p id="unassigned-weights">100%</p>
+      </div>
+
+      <div>
+        <label for="mySlider">Choose a value:</label>
+        <input type="range" id="speed-slider" min="0.2" max="10" step="0.1" value="1">
+        <p id="speed-slider-value">1x</p>
+      </div>
+    </div>
   </body>
 
 </html>

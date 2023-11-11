@@ -13,9 +13,27 @@ h1 {
   z-index: 1;
 }
 
+label{
+  font-size: 20px;
+}
+
 #scene-container {
   position: absolute;
   width: 100%;
   height: 100%;
   background-color: skyblue;
+}
+
+#controls-wrapper{
+  position: absolute;
+  z-index: 1;
+}
+
+#unassigned-weights-wrapper{
+  margin-top: 20px;
+}
+
+#unassigned-weights{
+  font-size: 20px;
+  margin: 0px;
 }
