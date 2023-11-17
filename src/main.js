@@ -3,7 +3,8 @@ import { Clock } from 'three';
 
 const clock = new Clock();
 
-const actionWeightInputs = document.getElementsByClassName("weight-input");
+const weightInputWrapper = document.getElementById('weight-input-wrapper');
+
 
 const startBtn = document.getElementById("start-btn");
 
@@ -12,25 +13,27 @@ const container = document.querySelector('#scene-container');
 const speedSlider = document.getElementById("speed-slider");
 const sliderValueDisplay = document.getElementById("speed-slider-value");
 
+const iterationsInput = document.getElementById("iterations-input");
+
+const fileInput = document.getElementById("file-input");
+
+const world = new World(container);
+
+let actionWeightInputs = document.getElementsByClassName("weight-input");
+
 let enteredWeights = [];
 let animationSpeed = 1;
+let animationIterations = 1;
 
 async function main() {
-  // Get a reference to the container element
 
-  // create a new world
-  const world = new World(container);
 
-  
-  // draw the scene
   world.render();
   
   await world.init();
   animate(world);
 
-  initializeEnteredWeights();
-
-  initializeEventListener(world);
+  initializeEventListener();
 }
 
 function animate(world){
@@ -43,14 +46,15 @@ function animate(world){
   requestAnimationFrame(() => animate(world));
 }
 
-function initializeEventListener(world){
+function initializeEventListener(){
+
   startBtn.addEventListener("click", () => {
     const weightSum = sumUpWeights();
     if(weightSum >100 || weightSum < 99){
       alert("The sum of the weights must be 100 or 99!");
     }
     else{
-      world.handleStartBtnClick(enteredWeights, animationSpeed);
+      world.handleStartBtnClick(enteredWeights, animationSpeed, animationIterations);
     }
   });
 
@@ -59,34 +63,33 @@ function initializeEventListener(world){
     animationSpeed = parseFloat(speedSlider.value);
   });
 
+  iterationsInput.addEventListener("input", () => {
+    if(iterationsInput.value < 0 || iterationsInput.value === ""){
+      iterationsInput.value = 0;
+    }
+    while(iterationsInput.value.length > 1 && iterationsInput.value[0] == '0'){
+      iterationsInput.value = iterationsInput.value.slice(1);
+    }
+
+    animationIterations = parseFloat(iterationsInput.value);
+  });
+
+  fileInput.addEventListener('change', handleFileSelect);
+}
+
+function initializeWeightInputEventListener(){
   for(let i=0; i < actionWeightInputs.length; i++){
-    actionWeightInputs[i].addEventListener("input", () =>{
-      if(actionWeightInputs[i].value > 100){
-        actionWeightInputs[i].value = 100;
-      }
-      else if(actionWeightInputs[i].value < 0){
-        actionWeightInputs[i].value = 0;
-      }
-
-      while(actionWeightInputs[i].value.length > 1 && actionWeightInputs[i].value[0] == '0'){
-        actionWeightInputs[i].value = actionWeightInputs[i].value.slice(1);
-      }
-
-      if(actionWeightInputs[i].value === ""){
-        actionWeightInputs[i].value = 0;
-      }
-
-      //actionWeightInputs[i].value = parseFloat(actionWeightInputs[i].value);
-      enteredWeights[i] = parseFloat(actionWeightInputs[i].value);
-      updateUnassignedWeights();
-    })
+    actionWeightInputs[i].removeEventListener("input", handleInput);
+  }
+  for(let i=0; i < actionWeightInputs.length; i++){
+    console.log(i);
+    actionWeightInputs[i].addEventListener("input", (event) => 
+      handleInput(event, i));
   }
 }
 
 function initializeEnteredWeights(){
-  for(let i=0; i < actionWeightInputs.length; i++){
-    enteredWeights.push(0);
-  }
+  enteredWeights.push(0);
 }
 
 function sumUpWeights(){
@@ -102,6 +105,105 @@ function sumUpWeights(){
 function updateUnassignedWeights(){
   let unassignedWeightsDisplay = document.getElementById("unassigned-weights");
   unassignedWeightsDisplay.innerHTML = (100 - sumUpWeights()).toFixed(1) + "%";
+}
+
+function handleInput(event, index){
+  if(actionWeightInputs[index].value > 100){
+    actionWeightInputs[index].value = 100;
+  }
+  else if(actionWeightInputs[index].value < 0){
+    actionWeightInputs[index].value = 0;
+  }
+
+  while(actionWeightInputs[index].value.length > 1 && actionWeightInputs[index].value[0] == '0'){
+    actionWeightInputs[index].value = actionWeightInputs[index].value.slice(1);
+  }
+
+  if(actionWeightInputs[index].value === ""){
+    actionWeightInputs[index].value = 0;
+  }
+
+  enteredWeights[index] = parseFloat(actionWeightInputs[index].value);
+  updateUnassignedWeights();
+}
+
+function handleFileSelect(event){
+  const files = event.target.files;
+
+  if (files.length > 0) {
+    for(const file of files){
+      readFile(file);
+    }
+  }
+}
+
+function readFile(file) {
+  const reader = new FileReader();
+
+  reader.onload = function (event) {
+    const fileContent = event.target.result;
+
+    processFileContent(fileContent, file.name);
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+function processFileContent(fileContent, fileName) {
+  if(fileName.toLowerCase().endsWith('.fbx')){
+    createWeightInput(weightInputWrapper, fileName);
+    initializeEnteredWeights();
+    initializeWeightInputEventListener();
+    world.handleFileUpload(fileContent);
+  }
+  else{
+    alert("File must be .fbx!");
+  }
+  fileInput.value = "";
+}
+
+function createWeightInput(parentElement, labelContent){
+  console.log(enteredWeights);
+  const label = document.createElement('label');
+  label.textContent = labelContent.slice(0, -4);
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.classList.add('weight-input');
+  input.id = 'weight-input-' + enteredWeights.length;
+  input.min = '0';
+  input.max = '100';
+  input.value = '0';
+
+  const deleteButton = document.createElement('button');
+  deleteButton.classList.add('delete-button');
+  deleteButton.innerHTML = `
+    <img src="assets/icons/x.svg" alt="delete-button">
+    `;
+
+  const inputDeleteWrapper = document.createElement('div');
+  inputDeleteWrapper.classList.add('input-delete-wrapper');
+  
+  const div = document.createElement('div');
+  div.appendChild(label);
+  div.appendChild(inputDeleteWrapper);
+  
+  inputDeleteWrapper.appendChild(input);
+  inputDeleteWrapper.appendChild(deleteButton);
+  
+  parentElement.appendChild(div);
+  
+  deleteButton.addEventListener('click', (event) => addDeleteEvent(event, input, parentElement, div));
+}
+
+function addDeleteEvent(event, input, parentElement, div) {
+  parentElement.removeChild(div);
+  actionWeightInputs = document.getElementsByClassName("weight-input");
+  enteredWeights.splice(input.id.charAt(input.id.length -1), 1);
+  initializeWeightInputEventListener();
+  updateUnassignedWeights();
+  world.handleFileRemove(input.id.charAt(input.id.length -1));
+  console.log(enteredWeights);
 }
 
 

@@ -16,6 +16,8 @@ let renderer;
 let controls;
 let mixer;
 
+let fileArray = [];
+
 class World {
   constructor(container) {
     camera = createCamera();
@@ -29,7 +31,7 @@ class World {
     const {ambientLight, light} = createLights();
 
     scene.add(light, ambientLight);
-    scene.add(cube);
+    //scene.add(cube);
 
     const resizer = new Resizer(container, camera, renderer);
   }
@@ -39,7 +41,7 @@ class World {
 
     menLoadingManager.onLoad = this.render;
 
-    model.position.set(0,0,3);
+    model.position.set(0,-1,3);
     model.scale.set(.01,.01,.01);
     scene.add(model);
     this.render();
@@ -58,13 +60,14 @@ class World {
     return mixer;
   }
 
-  async initializeAnimations(model, weights, animationSpeed){
-    let animations = await this.createAnimationsArray(
-      [
-        'assets/animations/rightHook.fbx',
-        'assets/animations/handRaising.fbx',
-        'assets/animations/fistPump.fbx'
-      ]);
+  async initializeAnimations(model, weights, animationSpeed, loopAmount){
+    // let animations = await this.createAnimationsArray(
+    //   [
+    //     'assets/animations/rightHook.fbx',
+    //     'assets/animations/handRaising.fbx',
+    //     'assets/animations/fistPump.fbx'
+    //   ]);
+    let animations = await this.createAnimationsArray(fileArray);
       let actionsArray = [];
 
       this.normalizeTimeTracks(animations, weights);
@@ -72,7 +75,7 @@ class World {
       mixer = new AnimationMixer(model);
 
       actionsArray = this.clipActions(mixer, animations);
-      this.setupActions(actionsArray, weights, animationSpeed);
+      this.setupActions(actionsArray, weights, animationSpeed, loopAmount);
   }
 
   normalizeTimeTracks(actionArray, weights){
@@ -117,6 +120,7 @@ class World {
   }
 
   async createAnimationsArray(animationsPathArray){
+    console.log(fileArray);
     let animationsArray = [];
 
     for (const path of animationsPathArray) {
@@ -139,16 +143,22 @@ class World {
     return actionArray;
   }
 
-  setupActions(actionArray, weights, animationSpeed){
+  setupActions(actionArray, weights, animationSpeed, loopAmount){
     for(let i = 0; i < actionArray.length; i++){
-      actionArray[i].setLoop(LoopRepeat, Infinity);
+      if(loopAmount === 0){
+        actionArray[i].setLoop(LoopRepeat, Infinity);
+      }
+      else{
+        actionArray[i].setLoop(LoopRepeat, loopAmount);
+      }
+
       actionArray[i].setEffectiveWeight(weights[i]);
       actionArray[i].setEffectiveTimeScale(animationSpeed);
       actionArray[i].play();
     }
   }
 
-  handleStartBtnClick(enteredWeights, animationSpeed){
+  handleStartBtnClick(enteredWeights, animationSpeed, animationIterations){
     console.log(enteredWeights);
     for(const number of enteredWeights){
       if(isNaN(number)){
@@ -156,7 +166,16 @@ class World {
         return;
       }
     }
-    this.initializeAnimations(model, enteredWeights, animationSpeed);
+    this.initializeAnimations(model, enteredWeights, animationSpeed, animationIterations);
+  }
+
+  handleFileUpload(fileContent){
+    fileArray.push(fileContent);
+  }
+
+  handleFileRemove(index){
+    fileArray.splice(index, 1);
+    console.log(index);
   }
 }
 

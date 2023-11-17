@@ -14,7 +14,8 @@ async function loadMen(){
 async function loadAnimation(animationPath){
   const loader = new FBXLoader();
 
-  const animation = await loader.loadAsync(animationPath);
+  //const animation = await loader.loadAsync(animationPath);
+  const animation = await loader.parse(animationPath);
   return animation.animations[0];
 }
 
