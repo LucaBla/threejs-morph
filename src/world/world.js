@@ -1,4 +1,4 @@
-import { AnimationMixer, LoopRepeat, QuaternionKeyframeTrack, VectorKeyframeTrack } from '../../node_modules/three';
+import { AnimationMixer, LoopRepeat, QuaternionKeyframeTrack, VectorKeyframeTrack } from 'three';
 import { createCamera } from './components/camera.js';
 import { createCube } from './components/cube.js';
 import { createLights } from './components/lights.js';

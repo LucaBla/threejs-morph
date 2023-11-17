@@ -1,4 +1,4 @@
-import { DirectionalLight, AmbientLight } from '../../../node_modules/three';
+import { DirectionalLight, AmbientLight } from 'three';
 
 function createLights() {
   const ambientLight = new AmbientLight(

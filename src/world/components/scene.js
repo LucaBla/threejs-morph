@@ -1,4 +1,4 @@
-import { Color, Scene } from '../../../node_modules/three';
+import { Color, Scene } from 'three';
 
 function createScene() {
   const scene = new Scene();
