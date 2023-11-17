@@ -1,5 +1,5 @@
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
-import { LoadingManager } from 'three';
+import { FBXLoader } from '../../../node_modules/three/examples/jsm/loaders/FBXLoader.js';
+import { LoadingManager } from '../../../node_modules/three';
 
 const menLoadingManager = new LoadingManager();
 

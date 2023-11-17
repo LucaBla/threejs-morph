@@ -1,5 +1,5 @@
 import { World } from './world/world.js';
-import { Clock } from 'three';
+import { Clock } from '../node_modules/three';
 
 const clock = new Clock();
 
