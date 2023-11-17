@@ -7,7 +7,7 @@ const menLoadingManager = new LoadingManager();
 async function loadMen(){
   const loader = new FBXLoader(menLoadingManager);
 
-  const men = await loader.loadAsync('assets/models/men.fbx');
+  const men = await loader.loadAsync('../../../assets/models/men.fbx');
   return men;
 }
 
