@@ -1,13 +1,16 @@
-import { AnimationMixer, LoopRepeat, QuaternionKeyframeTrack, VectorKeyframeTrack } from 'three';
+import { AnimationAction, AnimationClip, AnimationMixer, LoopRepeat, QuaternionKeyframeTrack, SkeletonHelper, VectorKeyframeTrack } from 'three';
 import { createCamera } from './components/camera.js';
 import { createCube } from './components/cube.js';
 import { createLights } from './components/lights.js';
 import { createScene } from './components/scene.js';
 import { createControls } from './systems/controls.js';
-import { loadMen, menLoadingManager, loadAnimation} from "./systems/fbxLoader.js"
+import { loadMen, menLoadingManager, loadFBXAnimation} from "./systems/fbxLoader.js"
+import { loadBVHAnimation } from './systems/bvhLoader.js';
 
 import { createRenderer } from './systems/renderer.js';
 import { Resizer } from './systems/resizer.js';
+
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 let model;
 let scene;
@@ -15,6 +18,10 @@ let camera;
 let renderer;
 let controls;
 let mixer;
+
+let helper;
+let skeletonMixer;
+let skeletonHelper;
 
 let fileArray = [];
 
@@ -42,8 +49,10 @@ class World {
     menLoadingManager.onLoad = this.render;
 
     model.position.set(0,-1,3);
-    model.scale.set(.01,.01,.01);
+    //model.scale.set(.01,.01,.01);
     scene.add(model);
+    helper = new SkeletonHelper(model);
+    scene.add( helper );
     this.render();
   }
 
@@ -60,6 +69,10 @@ class World {
     return mixer;
   }
 
+  getSkeletonMixer(){
+    return skeletonMixer;
+  }
+
   async initializeAnimations(model, weights, animationSpeed, loopAmount){
     // let animations = await this.createAnimationsArray(
     //   [
@@ -67,7 +80,7 @@ class World {
     //     'assets/animations/handRaising.fbx',
     //     'assets/animations/fistPump.fbx'
     //   ]);
-    let animations = await this.createAnimationsArray(fileArray);
+    let animations = await this.createAnimationsArray();
       let actionsArray = [];
 
       this.normalizeTimeTracks(animations, weights);
@@ -90,11 +103,22 @@ class World {
         continue;
       }
 
-      actionArray[i].tracks.forEach(track => {
-        const scaleFactor = biggestTimeTrack.length / track.times.length;
-  
-        track.times = track.times.map(time => time * scaleFactor);
-      });
+      if(actionArray[i].tracks != undefined){
+        //if true then this is a fbx-file
+        actionArray[i].tracks.forEach(track => {
+          const scaleFactor = biggestTimeTrack.length / track.times.length;
+    
+          track.times = track.times.map(time => time * scaleFactor);
+        });
+      }
+      else{
+        //this must be a bvh-file
+        actionArray[i].clip.tracks.forEach(track => {
+          const scaleFactor = biggestTimeTrack.length / track.times.length;
+    
+          track.times = track.times.map(time => time * scaleFactor);
+        });
+      }
       
       actionArray[i].duration = biggestTimeTrack[biggestTimeTrack.length - 1];
     }
@@ -107,24 +131,43 @@ class World {
       if(weights[i] == 0){
         continue;
       }
-
-      actionArray[i].tracks.forEach(track => {
-        if(biggestTimeTrack == null || 
-           track.times.length > biggestTimeTrack.length){
-            biggestTimeTrack = track.times;
-        }
-      });
+      if(actionArray[i].tracks != undefined){
+        //if true then this is a fbx-file
+        actionArray[i].tracks.forEach(track => {
+          if(biggestTimeTrack == null || 
+             track.times.length > biggestTimeTrack.length){
+              biggestTimeTrack = track.times;
+          }
+        });
+      }
+      else{
+        //this must be a bvh-file
+        actionArray[i].clip.tracks.forEach(track => {
+          if(biggestTimeTrack == null || 
+             track.times.length > biggestTimeTrack.length){
+              biggestTimeTrack = track.times;
+          }
+        });
+      }
     }
 
     return biggestTimeTrack;
   }
 
-  async createAnimationsArray(animationsPathArray){
+  async createAnimationsArray(){
     console.log(fileArray);
     let animationsArray = [];
 
-    for (const path of animationsPathArray) {
-      const animation = await loadAnimation(path);
+    for (const animationFile of fileArray) {
+      console.log(animationFile);
+      let animation = null;
+
+      if(animationFile.name.toLowerCase().endsWith('.fbx')){
+        animation = await loadFBXAnimation(animationFile.content);
+      }
+      else if(animationFile.name.toLowerCase().endsWith('.bvh')){
+        animation = await loadBVHAnimation(animationFile.content);
+      }
       animationsArray.push(animation);
     }
 
@@ -136,8 +179,19 @@ class World {
     let newAction;
 
     animationsArray.forEach(animation => {
-      newAction = mixer.clipAction(animation);
-      actionArray.push(newAction);
+      if(animation instanceof AnimationClip){
+        console.log(animation);
+        newAction = mixer.clipAction(animation);
+        actionArray.push(newAction);
+      }
+      else{
+        //bvh-file
+        console.log(animation.clip);
+        console.log(model);
+        newAction = mixer.clipAction(this.retargetBVH(animation, model));
+        //newAction = mixer.clipAction(animation.clip);
+        actionArray.push(newAction);
+      }
     });
 
     return actionArray;
@@ -169,13 +223,72 @@ class World {
     this.initializeAnimations(model, enteredWeights, animationSpeed, animationIterations);
   }
 
-  handleFileUpload(fileContent){
-    fileArray.push(fileContent);
+  handleFileUpload(fileContent, fileName){
+    fileArray.push({content: fileContent, name: fileName});
   }
 
   handleFileRemove(index){
     fileArray.splice(index, 1);
     console.log(index);
+  }
+
+  retargetBVH(animation, model){
+    const clip = animation.clip;
+    const skeleton = animation.skeleton;
+
+    skeletonHelper = new SkeletonHelper(skeleton.bones[0]);
+    skeletonHelper.skeleton = skeleton;
+
+    scene.add(skeleton.bones[0]);
+    scene.add(skeletonHelper);
+    skeletonMixer = new AnimationMixer(skeleton.bones[0]);
+    console.log(skeletonMixer, clip);
+    let action = skeletonMixer.clipAction(clip);
+    action.play();
+
+    console.log(skeleton);
+
+    if(!model.skeleton){
+      model.traverse(child =>{
+        if(child.skeleton){
+          model.skeleton = child.skeleton;
+        }
+      })
+    }
+    // *Special Note* SkeletonUtils.retargetClip seems to output an animationClip
+    // with more frames (time arrays) than necessary and a reduced duration.
+    // I'm supplying fps and modifying input clip duration to fix that
+    
+    /* get fps from first track. */
+    const fps = 1 / clip.tracks[0].times[1] || 1;
+    clip.duration += 1 / fps;
+
+    const options = {
+      fps: fps,
+      //useTargetMatrix: true,
+      //preservePosition: true,
+      //useFirstFramePosition: true
+    };
+
+    console.log(model);
+    console.log(helper);
+    const newClip = SkeletonUtils.retargetClip(model.children[1], skeletonHelper, clip, options);
+    console.log(model);
+
+    // model.traverse(function(child) {
+    //   if (child.type === "SkinnedMesh") {
+    //     child.pose();
+    //   }
+    // });
+
+    newClip.tracks.forEach( track =>{
+      if(track.name.includes("[")){
+        track.name = track.name.replace(".bones[", "").replace(/\]/g, "");
+      }
+    });
+
+    console.log(newClip);
+    return newClip
   }
 }
 

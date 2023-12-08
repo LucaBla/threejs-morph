@@ -37,9 +37,13 @@ async function main() {
 }
 
 function animate(world){
+  const delta = clock.getDelta();
   world.getControls().update();
   if(world.getMixer() != undefined){
-    world.getMixer().update(clock.getDelta());
+    world.getMixer().update(delta);
+  }
+  if(world.getSkeletonMixer() != undefined){
+    world.getSkeletonMixer().update(delta);
   }
   world.render();
 
@@ -150,14 +154,14 @@ function readFile(file) {
 }
 
 function processFileContent(fileContent, fileName) {
-  if(fileName.toLowerCase().endsWith('.fbx')){
+  if(fileName.toLowerCase().endsWith('.fbx') || fileName.toLowerCase().endsWith('.bvh')){
     createWeightInput(weightInputWrapper, fileName);
     initializeEnteredWeights();
     initializeWeightInputEventListener();
-    world.handleFileUpload(fileContent);
+    world.handleFileUpload(fileContent, fileName);
   }
   else{
-    alert("File must be .fbx!");
+    alert("File must be .fbx or .bvh!");
   }
   fileInput.value = "";
 }
