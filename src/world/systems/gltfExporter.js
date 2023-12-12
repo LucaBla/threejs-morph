@@ -1,3 +1,4 @@
+import { Bone, BoxGeometry, SkinnedMesh, Triangle } from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 
 const exporter = new GLTFExporter();
@@ -25,12 +26,15 @@ function exportGLTF(scene, animationsToDownload){
     animations: animationsToDownload, // Array von Animationen, die exportiert werden sollen
 };
 
-console.log(animationsToDownload);
+const exportScene = createExportScene(scene);
 
-exporter.parse(scene, function (result) {
+console.log(exportScene);
+
+exporter.parse(exportScene, function (result) {
   if (result instanceof ArrayBuffer) {
       // result ist eine ArrayBuffer, den du beispielsweise in eine Datei speichern kannst
-      saveArrayBuffer(result, 'model.glb');
+      saveArrayBuffer(result, 'morphedAnimation.glb');
+      console.log(result);
   } else {
       // result könnte auch ein JSON-Objekt sein, wenn binary: false im options-Objekt gesetzt ist
       console.error('Fehler beim Exportieren der GLB-Datei.');
@@ -51,6 +55,27 @@ function saveArrayBuffer(buffer, filename) {
   link.href = URL.createObjectURL(blob);
   link.download = filename;
   link.click();
+}
+
+function createExportScene(scene){
+  const exportScene = scene.clone();
+
+  clearUpExportScene(exportScene);
+
+  return exportScene;
+}
+
+function clearUpExportScene(exportScene){
+  exportScene.children.forEach(child => {
+    if(child.name === "Armature"){
+      child.children.forEach(subChild =>{
+        if(subChild instanceof Bone){
+          child.children = [subChild];
+          console.log(typeof child.children[0]);
+        }
+      })
+    }
+  });
 }
 
 // function downloadJSON( json, filename ) {

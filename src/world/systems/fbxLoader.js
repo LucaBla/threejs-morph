@@ -31,7 +31,7 @@ function updateBoneNamesForModel(parent){
     return;
   }
   parent.children.forEach(child =>{
-    if(child instanceof Bone && containsNumber(child.name)){
+    if(child instanceof Bone && containsMixamo(child.name)){
       child.name = removeCharactersUntilNumber(child.name);
       updateBoneNamesForModel(child);
     }
@@ -104,7 +104,7 @@ function updateMeshes(parent){
 
 function updateBoneNamesForAnimation(animation){
   animation.tracks.forEach(track =>{
-    if(containsNumber(track.name)){
+    if(containsMixamo(track.name)){
       track.name = removeCharactersUntilNumber(track.name);
     }
   })
@@ -113,6 +113,10 @@ function updateBoneNamesForAnimation(animation){
 
 function containsNumber(str) {
   return /\d/.test(str);
+}
+
+function containsMixamo(str) {
+  return str.includes('mixamo');
 }
 
 function removeCharactersUntilNumber(str) {
