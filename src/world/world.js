@@ -5,12 +5,14 @@ import { createLights } from './components/lights.js';
 import { createScene } from './components/scene.js';
 import { createControls } from './systems/controls.js';
 import { loadMen, menLoadingManager, loadFBXAnimation} from "./systems/fbxLoader.js"
+import { loadMenGLTF, menLoadingManagerGLTF, loadGLTFAnimation } from './systems/gltfLoader.js';
 import { loadBVHAnimation } from './systems/bvhLoader.js';
 
 import { createRenderer } from './systems/renderer.js';
 import { Resizer } from './systems/resizer.js';
 
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { exportGLTF } from './systems/gltfExporter.js';
 
 let model;
 let scene;
@@ -24,6 +26,8 @@ let skeletonMixer;
 let skeletonHelper;
 
 let fileArray = [];
+
+let animationsToDownload = [];
 
 class World {
   constructor(container) {
@@ -44,15 +48,17 @@ class World {
   }
 
   async init(){
-    model = await loadMen();
+    model = await loadMenGLTF();
 
-    menLoadingManager.onLoad = this.render;
+    menLoadingManagerGLTF.onLoad = this.render;
 
-    model.position.set(0,-1,3);
+    console.log(model);
+
+    model.position.set(0,-80,3);
+    model.rotation.set(1.570796461153735,0,-0);
     //model.scale.set(.01,.01,.01);
     scene.add(model);
     helper = new SkeletonHelper(model);
-    scene.add( helper );
     this.render();
   }
 
@@ -168,6 +174,9 @@ class World {
       else if(animationFile.name.toLowerCase().endsWith('.bvh')){
         animation = await loadBVHAnimation(animationFile.content);
       }
+      else if(animationFile.name.toLowerCase().endsWith('.glb')){
+        animation = await loadGLTFAnimation(animationFile.content);
+      }
       animationsArray.push(animation);
     }
 
@@ -209,6 +218,8 @@ class World {
       actionArray[i].setEffectiveWeight(weights[i]);
       actionArray[i].setEffectiveTimeScale(animationSpeed);
       actionArray[i].play();
+
+      animationsToDownload.push(actionArray[i]._clip);
     }
   }
 
@@ -223,6 +234,10 @@ class World {
     this.initializeAnimations(model, enteredWeights, animationSpeed, animationIterations);
   }
 
+  handleDownloadBtnClick(){
+    exportGLTF(scene, animationsToDownload);
+  }
+
   handleFileUpload(fileContent, fileName){
     fileArray.push({content: fileContent, name: fileName});
   }
@@ -230,6 +245,15 @@ class World {
   handleFileRemove(index){
     fileArray.splice(index, 1);
     console.log(index);
+  }
+
+  handleSkeletonCheckBoxChange(isChecked){
+    if(isChecked && !scene.children.includes(helper)){
+      scene.add(helper);
+    }
+    else if(!isChecked && scene.children.includes(helper)){
+      scene.remove(helper);
+    }
   }
 
   retargetBVH(animation, model){
@@ -275,11 +299,11 @@ class World {
     const newClip = SkeletonUtils.retargetClip(model.children[1], skeletonHelper, clip, options);
     console.log(model);
 
-    // model.traverse(function(child) {
-    //   if (child.type === "SkinnedMesh") {
-    //     child.pose();
-    //   }
-    // });
+    model.traverse(function(child) {
+      if (child.type === "SkinnedMesh") {
+        child.pose();
+      }
+    });
 
     newClip.tracks.forEach( track =>{
       if(track.name.includes("[")){
@@ -287,7 +311,14 @@ class World {
       }
     });
 
+    console.log(model.skeleton);
+
+    model.skeleton.bones.forEach( bone =>{
+      bone.scale.set(1,1,1);
+    });
+
     console.log(newClip);
+    console.log(model);
     return newClip
   }
 }

@@ -5,8 +5,11 @@ const clock = new Clock();
 
 const weightInputWrapper = document.getElementById('weight-input-wrapper');
 
+const skeletonInput = document.getElementById('skeleton-input');
 
 const startBtn = document.getElementById("start-btn");
+
+const downloadBtn = document.getElementById("download-btn");
 
 const container = document.querySelector('#scene-container');
 
@@ -52,6 +55,10 @@ function animate(world){
 
 function initializeEventListener(){
 
+  skeletonInput.addEventListener("change", ()=>{
+    world.handleSkeletonCheckBoxChange(skeletonInput.checked);
+  })
+
   startBtn.addEventListener("click", () => {
     const weightSum = sumUpWeights();
     if(weightSum >100 || weightSum < 99){
@@ -60,6 +67,10 @@ function initializeEventListener(){
     else{
       world.handleStartBtnClick(enteredWeights, animationSpeed, animationIterations);
     }
+  });
+
+  downloadBtn.addEventListener("click", () =>{
+    world.handleDownloadBtnClick();
   });
 
   speedSlider.addEventListener("input", () => {
@@ -154,14 +165,16 @@ function readFile(file) {
 }
 
 function processFileContent(fileContent, fileName) {
-  if(fileName.toLowerCase().endsWith('.fbx') || fileName.toLowerCase().endsWith('.bvh')){
+  if(fileName.toLowerCase().endsWith('.fbx') || 
+    fileName.toLowerCase().endsWith('.bvh') ||
+    fileName.toLowerCase().endsWith('.glb')){
     createWeightInput(weightInputWrapper, fileName);
     initializeEnteredWeights();
     initializeWeightInputEventListener();
     world.handleFileUpload(fileContent, fileName);
   }
   else{
-    alert("File must be .fbx or .bvh!");
+    alert("File must be .fbxm, .glb or .bvh!");
   }
   fileInput.value = "";
 }

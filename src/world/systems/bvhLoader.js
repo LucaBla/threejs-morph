@@ -17,7 +17,7 @@ async function loadBVHAnimation(animationBuffer){
     if (animation) {
       //animation.clip.tracks = animation.clip.tracks.filter(track => !(track instanceof VectorKeyframeTrack));
       //test(animation);
-      console.log(animation.clip.tracks);
+      console.log(animation);
       resolve(animation);
     } else {
       reject(new Error('Failed to parse BVH animation.'));
