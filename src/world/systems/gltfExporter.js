@@ -67,7 +67,7 @@ function createExportScene(scene){
 
 function clearUpExportScene(exportScene){
   exportScene.children.forEach(child => {
-    if(child.name === "Armature"){
+    if(child.name === "Model"){
       child.children.forEach(subChild =>{
         if(subChild instanceof Bone){
           child.children = [subChild];

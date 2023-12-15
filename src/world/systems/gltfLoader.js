@@ -3,7 +3,7 @@ import { Bone, LoadingManager } from 'three';
 
 const menLoadingManagerGLTF = new LoadingManager();
 
-async function loadMenGLTF(){
+async function loadManGLTF(){
   const loader = new GLTFLoader(menLoadingManagerGLTF);
 
   const men = await loader.loadAsync('./assets/models/men.glb');
@@ -11,12 +11,14 @@ async function loadMenGLTF(){
   updateMeshes(men.scene.children[0]);
   console.log(men);
   updateScale(men);
+  men.scene.children[0].name = "Model";
   return men.scene.children[0];
 }
 
 async function loadGLTFAnimation(animationPath){
   const loader = new GLTFLoader();
 
+  console.log(animationPath);
   const animation = await loader.parseAsync(animationPath);
   console.log(animation);
   updateBoneNamesForAnimation(animation.animations[0]);
@@ -62,14 +64,6 @@ function updateMeshes(parent){
   });
 }
 
-function containsNumber(str) {
-  return /\d/.test(str);
-}
-
-function containsColon(str) {
-  return str.includes(':');
-}
-
 function containsMixamo(str) {
   return str.includes('mixamo');
 }
@@ -79,4 +73,4 @@ function removeCharactersUntilNumber(str) {
   return newStr.slice(1);
 }
 
-export {loadMenGLTF, loadGLTFAnimation, menLoadingManagerGLTF};
+export {loadManGLTF, loadGLTFAnimation, menLoadingManagerGLTF};

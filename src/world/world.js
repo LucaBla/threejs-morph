@@ -4,8 +4,8 @@ import { createCube } from './components/cube.js';
 import { createLights } from './components/lights.js';
 import { createScene } from './components/scene.js';
 import { createControls } from './systems/controls.js';
-import { loadMen, menLoadingManager, loadFBXAnimation} from "./systems/fbxLoader.js"
-import { loadMenGLTF, menLoadingManagerGLTF, loadGLTFAnimation } from './systems/gltfLoader.js';
+import { loadMan, loadWoman, fbxLoadingManager, loadFBXAnimation, loadMannequin} from "./systems/fbxLoader.js"
+import { loadManGLTF, menLoadingManagerGLTF, loadGLTFAnimation } from './systems/gltfLoader.js';
 import { loadBVHAnimation } from './systems/bvhLoader.js';
 
 import { createRenderer } from './systems/renderer.js';
@@ -47,19 +47,8 @@ class World {
     const resizer = new Resizer(container, camera, renderer);
   }
 
-  async init(){
-    model = await loadMenGLTF();
-
-    menLoadingManagerGLTF.onLoad = this.render;
-
-    console.log(model);
-
-    model.position.set(0,-80,3);
-    model.rotation.set(1.570796461153735,0,-0);
-    //model.scale.set(.01,.01,.01);
-    scene.add(model);
-    helper = new SkeletonHelper(model);
-    this.render();
+  async init(modelIdentifier){
+    await this.updateModel(modelIdentifier);
   }
 
   render() {
@@ -220,6 +209,49 @@ class World {
       actionArray[i].play();
 
       animationsToDownload.push(actionArray[i]._clip);
+    }
+  }
+
+  async updateModel(modelIdentifier, showSkeleton = undefined){
+    let newModel = null;
+    if(modelIdentifier === "man"){
+      newModel = await loadManGLTF();
+    }
+    else if(modelIdentifier === "woman"){
+      newModel = await loadWoman();
+    }
+    else if(modelIdentifier === "mannequin"){
+      newModel = await loadMannequin();
+    }
+    else{
+      console.error("Invalid modelIdentifier!");
+    }
+
+    if(newModel !== null){
+      this.removeOldModel();
+      //fbxLoadingManager.onLoad = this.render;
+      model = newModel;
+      console.log(model);
+      model.position.set(0,-80,3);
+      //model.scale.set(.01,.01,.01);
+      scene.add(model);
+      helper = new SkeletonHelper(model);
+      if(showSkeleton){
+        scene.add(helper);
+      }
+      this.render();
+    }
+  }
+
+  removeOldModel(){
+    console.log(model);
+    if(model !== undefined){
+      console.log("model removed");
+      scene.remove(model);
+      scene.remove(helper);
+
+      helper.dispose();
+      //model.dispose();
     }
   }
 

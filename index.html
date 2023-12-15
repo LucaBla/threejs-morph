@@ -20,6 +20,17 @@
       <h2>Settings</h2>
       <div id="model-input-wrapper">
         <h3>Model:</h3>
+        <div id="model-switch-wrapper">
+          <div id="man-btn" class="switch-model-btn switch-model-btn-active">
+            <img src="assets/icons/face-man.svg">
+          </div>
+          <div id="woman-btn" class="switch-model-btn">
+            <img src="assets/icons/face-woman.svg">
+          </div>
+          <div id="mannequin-btn" class="switch-model-btn">
+            <img src="assets/icons/robot.svg">
+          </div>
+        </div>
         <div>
           <label for="skeleton-input" class="skeleton-input-button">
             Show Skeleton:
@@ -27,9 +38,9 @@
           <input type="checkbox" id="skeleton-input">
         </div>
       </div>
-      <div id="weight-input-wrapper">
+      <div id="action-input-wrapper">
         <h3>Actions:</h3>
-        <div>
+        <div id="upload-wrapper">
           <label for="file-input" class="file-input-button">
             Upload
         </label>
@@ -39,6 +50,7 @@
           <label>Unassigned Weights:</label>
           <p id="unassigned-weights">100%</p>
         </div>
+        <div id="weight-input-wrapper"></div>
       </div>
 
 

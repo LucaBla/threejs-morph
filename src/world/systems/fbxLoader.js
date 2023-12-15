@@ -1,17 +1,30 @@
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { Bone, LoadingManager, MathUtils, QuaternionKeyframeTrack, Matrix4, Quaternion, Euler, VectorKeyframeTrack, Vector3 } from 'three';
 
-const menLoadingManager = new LoadingManager();
+const fbxLoadingManager = new LoadingManager();
 
 
-async function loadMen(){
-  const loader = new FBXLoader(menLoadingManager);
+function loadMan(){
+  return loadModel('./assets/models/men.fbx');
+}
 
-  const men = await loader.loadAsync('./assets/models/men.fbx');
-  updateBoneNamesForModel(men);
-  updateMeshes(men);
-  console.log(men);
-  return men;
+function loadWoman(){
+  return loadModel('./assets/models/woman.fbx');
+}
+
+function loadMannequin(){
+  return loadModel('./assets/models/mannequin.fbx');
+}
+
+async function loadModel(modelPath){
+  const loader = new FBXLoader(fbxLoadingManager);
+
+  const model = await loader.loadAsync(modelPath);
+  updateBoneNamesForModel(model);
+  updateMeshes(model);
+  model.name = "Model";
+  console.log(model);
+  return model;
 }
 
 async function loadFBXAnimation(animationPath){
@@ -21,8 +34,8 @@ async function loadFBXAnimation(animationPath){
   const animation = await loader.parse(animationPath);
   console.log(animation);
   updateBoneNamesForAnimation(animation.animations[0]);
-  retargetVectorKeyFrameTrackToGLTF(animation.animations[0]);
-  retargetQuaternionKeyFrameTrackToGLTF(animation.animations[0]);
+  //retargetVectorKeyFrameTrackToGLTF(animation.animations[0]);
+  //retargetQuaternionKeyFrameTrackToGLTF(animation.animations[0]);
   return animation.animations[0];
 }
 
@@ -32,7 +45,7 @@ function updateBoneNamesForModel(parent){
   }
   parent.children.forEach(child =>{
     if(child instanceof Bone && containsMixamo(child.name)){
-      child.name = removeCharactersUntilNumber(child.name);
+      child.name = removeMixamorigPrefix(child.name);
       updateBoneNamesForModel(child);
     }
   })
@@ -105,23 +118,36 @@ function updateMeshes(parent){
 function updateBoneNamesForAnimation(animation){
   animation.tracks.forEach(track =>{
     if(containsMixamo(track.name)){
-      track.name = removeCharactersUntilNumber(track.name);
+      track.name = removeMixamorigPrefix(track.name);
     }
   })
   console.log(animation);
 }
 
-function containsNumber(str) {
-  return /\d/.test(str);
+function removeMixamorigPrefix(inputString) {
+  const prefix = "mixamorig";
+  
+  if (inputString.startsWith(prefix)) {
+    let result = inputString.slice(prefix.length);
+
+    if(isFirstCharANumber(result)){
+      return result.slice(1);
+    }
+    else{
+      return result;
+    }
+  } 
+  else {
+    return inputString;
+  }
 }
 
 function containsMixamo(str) {
   return str.includes('mixamo');
 }
 
-function removeCharactersUntilNumber(str) {
-  let newStr = str.replace(/^[^\d]*(\d.*)$/, "$1");
-  return newStr.slice(1);
+function isFirstCharANumber(str) {
+  return !isNaN(str.charAt(0));
 }
 
-export {loadMen, loadFBXAnimation, menLoadingManager};
+export {loadMan, loadWoman, loadMannequin, loadFBXAnimation, fbxLoadingManager};

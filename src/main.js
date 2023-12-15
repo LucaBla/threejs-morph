@@ -3,6 +3,9 @@ import { Clock } from 'three';
 
 const clock = new Clock();
 
+
+const switchModelBtns = document.getElementsByClassName('switch-model-btn');
+
 const weightInputWrapper = document.getElementById('weight-input-wrapper');
 
 const skeletonInput = document.getElementById('skeleton-input');
@@ -22,6 +25,9 @@ const fileInput = document.getElementById("file-input");
 
 const world = new World(container);
 
+
+let activeModel = document.getElementsByClassName('switch-model-btn-active')[0];
+
 let actionWeightInputs = document.getElementsByClassName("weight-input");
 
 let enteredWeights = [];
@@ -29,11 +35,10 @@ let animationSpeed = 1;
 let animationIterations = 1;
 
 async function main() {
-
-
   world.render();
   
-  await world.init();
+  const modelIdentifier = activeModel.id.split("-")[0];
+  await world.init(modelIdentifier);
   animate(world);
 
   initializeEventListener();
@@ -54,6 +59,11 @@ function animate(world){
 }
 
 function initializeEventListener(){
+  [...switchModelBtns].forEach(btn => {
+    btn.addEventListener("click", ()=>{
+      handleSwitchModelBtnClick(btn);
+    })
+  })
 
   skeletonInput.addEventListener("change", ()=>{
     world.handleSkeletonCheckBoxChange(skeletonInput.checked);
@@ -90,6 +100,27 @@ function initializeEventListener(){
   });
 
   fileInput.addEventListener('change', handleFileSelect);
+}
+
+function handleSwitchModelBtnClick(btn){
+  console.log(btn);
+  if(!btn.classList.contains("switch-model-btn-active")){
+    [...switchModelBtns].forEach(tempBtn => {
+      if(tempBtn.classList.contains("switch-model-btn-active")){
+        tempBtn.classList.remove("switch-model-btn-active");
+      }
+    });
+    btn.classList.add("switch-model-btn-active");
+
+    updateActiveModelReference();
+    const modelIdentifier = activeModel.id.split("-")[0];
+    console.log(modelIdentifier);
+    world.updateModel(modelIdentifier, skeletonInput.checked);
+  }
+}
+
+function updateActiveModelReference(){
+  activeModel = document.getElementsByClassName('switch-model-btn-active')[0];
 }
 
 function initializeWeightInputEventListener(){

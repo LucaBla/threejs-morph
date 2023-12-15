@@ -60,11 +60,31 @@ label{
   width: 100%;
 }
 
+#action-input-wrapper{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+}
+
+#upload-wrapper{
+  background-color: #202123;
+  padding: 10px;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 10px;
+}
+
 #weight-input-wrapper{
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 #weight-input-wrapper > div{
@@ -75,7 +95,6 @@ label{
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  margin-top: 10px;
   border-radius: 10px;
 }
 
@@ -128,7 +147,6 @@ label{
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 20px;
   width: 100%;
 }
 
@@ -155,7 +173,6 @@ label{
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 20px;
   width: 100%;
 }
 
@@ -167,7 +184,7 @@ label{
 }
 
 #iterations-input{
-  background-color: #444;
+  background-color: #202123;
   border-radius: 5px;
   padding: 10px 5px;
   border: none;
@@ -199,5 +216,30 @@ label{
 
 .annotation{
   color: rgba(255, 255, 255, 0.5);
-  margin-top: -5px;
+  margin-top: 5px;
+}
+
+#model-switch-wrapper{
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.switch-model-btn{
+  background-color: #202123;
+  height: 50px;
+  width: 50px;
+  border-radius: 10px;
+}
+
+.switch-model-btn-active{
+  background-color: #007BFF;
+}
+
+.switch-model-btn img{
+  opacity: 0.5;
+}
+
+.switch-model-btn-active img{
+  opacity: 1;
 }
