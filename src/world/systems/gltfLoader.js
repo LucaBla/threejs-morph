@@ -35,7 +35,7 @@ function updateBoneNamesForModel(parent){
   }
   parent.children.forEach(child =>{
     if(child instanceof Bone && containsMixamo(child.name)){
-      child.name = removeCharactersUntilNumber(child.name);
+      child.name = removeMixamorigPrefix(child.name);
       updateBoneNamesForModel(child);
     }
   })
@@ -44,7 +44,7 @@ function updateBoneNamesForModel(parent){
 function updateBoneNamesForAnimation(animation){
   animation.tracks.forEach(track =>{
     if(containsMixamo(track.name)){
-      track.name = removeCharactersUntilNumber(track.name);
+      track.name = removeMixamorigPrefix(track.name);
     }
   })
   console.log(animation);
@@ -64,13 +64,30 @@ function updateMeshes(parent){
   });
 }
 
+function removeMixamorigPrefix(inputString) {
+  const prefix = "mixamorig";
+  
+  if (inputString.startsWith(prefix)) {
+    let result = inputString.slice(prefix.length);
+
+    if(isFirstCharANumber(result)){
+      return result.slice(1);
+    }
+    else{
+      return result;
+    }
+  } 
+  else {
+    return inputString;
+  }
+}
+
 function containsMixamo(str) {
   return str.includes('mixamo');
 }
 
-function removeCharactersUntilNumber(str) {
-  let newStr = str.replace(/^[^\d]*(\d.*)$/, "$1");
-  return newStr.slice(1);
+function isFirstCharANumber(str) {
+  return !isNaN(str.charAt(0));
 }
 
 export {loadManGLTF, loadGLTFAnimation, menLoadingManagerGLTF};
