@@ -5,7 +5,7 @@ import { createLights } from './components/lights.js';
 import { createScene } from './components/scene.js';
 import { createControls } from './systems/controls.js';
 import { loadMan, loadWoman, fbxLoadingManager, loadFBXAnimation, loadMannequin} from "./systems/fbxLoader.js"
-import { loadManGLTF, menLoadingManagerGLTF, loadGLTFAnimation } from './systems/gltfLoader.js';
+import { loadManGLTF, loadWomanGLTF, loadMannequinGLTF, gltfLoadingManager, loadGLTFAnimation } from './systems/gltfLoader.js';
 import { loadBVHAnimation } from './systems/bvhLoader.js';
 
 import { createRenderer } from './systems/renderer.js';
@@ -218,10 +218,10 @@ class World {
       newModel = await loadManGLTF();
     }
     else if(modelIdentifier === "woman"){
-      newModel = await loadWoman();
+      newModel = await loadWomanGLTF();
     }
     else if(modelIdentifier === "mannequin"){
-      newModel = await loadMannequin();
+      newModel = await loadMannequinGLTF();
     }
     else{
       console.error("Invalid modelIdentifier!");
@@ -322,7 +322,8 @@ class World {
     const options = {
       fps: fps,
       //useTargetMatrix: true,
-      //preservePosition: true,
+      //.preservePosition: true,
+      //preserveHipPosition: true,
       //useFirstFramePosition: true
     };
 
@@ -348,6 +349,8 @@ class World {
     model.skeleton.bones.forEach( bone =>{
       bone.scale.set(1,1,1);
     });
+
+    //model.position.set(0,0,3);
 
     console.log(newClip);
     console.log(model);

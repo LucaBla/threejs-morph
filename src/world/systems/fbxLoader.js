@@ -1,5 +1,5 @@
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
-import { Bone, LoadingManager, MathUtils, QuaternionKeyframeTrack, Matrix4, Quaternion, Euler, VectorKeyframeTrack, Vector3 } from 'three';
+import { Bone, LoadingManager, MathUtils, QuaternionKeyframeTrack, Matrix4, Quaternion, Euler, VectorKeyframeTrack, Vector3, Group } from 'three';
 
 const fbxLoadingManager = new LoadingManager();
 

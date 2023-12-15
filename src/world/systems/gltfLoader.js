@@ -1,18 +1,31 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Bone, LoadingManager } from 'three';
 
-const menLoadingManagerGLTF = new LoadingManager();
+const gltfLoadingManager = new LoadingManager();
 
-async function loadManGLTF(){
-  const loader = new GLTFLoader(menLoadingManagerGLTF);
+function loadManGLTF(){
+  return loadModel('./assets/models/man.glb');
+}
 
-  const men = await loader.loadAsync('./assets/models/men.glb');
-  updateBoneNamesForModel(men.scene.children[0]);
-  updateMeshes(men.scene.children[0]);
-  console.log(men);
-  updateScale(men);
-  men.scene.children[0].name = "Model";
-  return men.scene.children[0];
+function loadWomanGLTF(){
+  return loadModel('./assets/models/woman.glb');
+}
+
+function loadMannequinGLTF(){
+  return loadModel('./assets/models/mannequin.glb');
+}
+
+async function loadModel(modelPath){
+  const loader = new GLTFLoader(gltfLoadingManager);
+
+  let model = await loader.loadAsync(modelPath);
+  model = model.scene.children[0];
+  updateScale(model);
+  updateBoneNamesForModel(model);
+  updateMeshes(model);
+  model.name = "Model";
+  console.log(model);
+  return model;
 }
 
 async function loadGLTFAnimation(animationPath){
@@ -25,8 +38,8 @@ async function loadGLTFAnimation(animationPath){
   return animation.animations[0];
 }
 
-function updateScale(men){
-  men.scene.children[0].scale.set(1, 1, 1);
+function updateScale(model){
+  model.scale.set(1, 1, 1);
 }
 
 function updateBoneNamesForModel(parent){
@@ -90,4 +103,4 @@ function isFirstCharANumber(str) {
   return !isNaN(str.charAt(0));
 }
 
-export {loadManGLTF, loadGLTFAnimation, menLoadingManagerGLTF};
+export {loadManGLTF, loadWomanGLTF, loadMannequinGLTF, loadGLTFAnimation, gltfLoadingManager};
