@@ -15,7 +15,8 @@ async function loadBVHAnimation(animationBuffer){
     const animation = loader.parse(text);
     
     if (animation) {
-      //animation.clip.tracks = animation.clip.tracks.filter(track => !(track instanceof VectorKeyframeTrack));
+      animation.clip.tracks = animation.clip.tracks.filter(track => !(track instanceof VectorKeyframeTrack));
+      //animation.skeleton.bones[0].position.set(0,0,0);
       //test(animation);
       console.log(animation);
       resolve(animation);

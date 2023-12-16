@@ -186,7 +186,8 @@ class World {
         //bvh-file
         console.log(animation.clip);
         console.log(model);
-        newAction = mixer.clipAction(this.retargetBVH(animation, model));
+        const retargetedClip = this.retargetBVH(animation, model);
+        newAction = mixer.clipAction(retargetedClip);
         //newAction = mixer.clipAction(animation.clip);
         actionArray.push(newAction);
       }
@@ -232,7 +233,7 @@ class World {
       //fbxLoadingManager.onLoad = this.render;
       model = newModel;
       console.log(model);
-      model.position.set(0,-80,3);
+      model.position.set(0,-80,0);
       //model.scale.set(.01,.01,.01);
       scene.add(model);
       helper = new SkeletonHelper(model);
@@ -297,13 +298,14 @@ class World {
 
     scene.add(skeleton.bones[0]);
     scene.add(skeletonHelper);
+    skeletonHelper.rotation.set(90,90,90);
     skeletonMixer = new AnimationMixer(skeleton.bones[0]);
     console.log(skeletonMixer, clip);
     let action = skeletonMixer.clipAction(clip);
     action.play();
-
+    
     console.log(skeleton);
-
+    
     if(!model.skeleton){
       model.traverse(child =>{
         if(child.skeleton){
@@ -318,7 +320,7 @@ class World {
     /* get fps from first track. */
     const fps = 1 / clip.tracks[0].times[1] || 1;
     clip.duration += 1 / fps;
-
+    
     const options = {
       fps: fps,
       //useTargetMatrix: true,
@@ -326,32 +328,33 @@ class World {
       //preserveHipPosition: true,
       //useFirstFramePosition: true
     };
-
+    
     console.log(model);
     console.log(helper);
     const newClip = SkeletonUtils.retargetClip(model.children[1], skeletonHelper, clip, options);
     console.log(model);
-
+    
     model.traverse(function(child) {
       if (child.type === "SkinnedMesh") {
         child.pose();
       }
     });
-
+    
     newClip.tracks.forEach( track =>{
       if(track.name.includes("[")){
         track.name = track.name.replace(".bones[", "").replace(/\]/g, "");
       }
     });
-
+    
     console.log(model.skeleton);
-
+    
     model.skeleton.bones.forEach( bone =>{
       bone.scale.set(1,1,1);
     });
-
+    
+    //mixer = new AnimationMixer(model);
     //model.position.set(0,0,3);
-
+    
     console.log(newClip);
     console.log(model);
     return newClip
