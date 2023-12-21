@@ -115,7 +115,13 @@ class World {
         });
       }
       
-      actionArray[i].duration = biggestTimeTrack[biggestTimeTrack.length - 1];
+      if(actionArray[i].duration != undefined){
+        actionArray[i].duration = biggestTimeTrack[biggestTimeTrack.length - 1];
+      }
+      else{
+        actionArray[i].clip.duration = biggestTimeTrack[biggestTimeTrack.length - 1];
+      }
+      console.log(actionArray[i]);
     }
   }
 
