@@ -7,6 +7,7 @@ import { createControls } from './systems/controls.js';
 import { loadMan, loadWoman, fbxLoadingManager, loadFBXAnimation, loadMannequin} from "./systems/fbxLoader.js"
 import { loadManGLTF, loadWomanGLTF, loadMannequinGLTF, gltfLoadingManager, loadGLTFAnimation } from './systems/gltfLoader.js';
 import { loadBVHAnimation } from './systems/bvhLoader.js';
+import { morphAnimations } from './systems/animationMorpher.js';
 
 import { createRenderer } from './systems/renderer.js';
 import { Resizer } from './systems/resizer.js';
@@ -262,15 +263,23 @@ class World {
     }
   }
 
-  handleStartBtnClick(enteredWeights, animationSpeed, animationIterations){
-    console.log(enteredWeights);
+  async handleStartBtnClick(enteredWeights, animationSpeed, animationIterations){
     for(const number of enteredWeights){
       if(isNaN(number)){
         alert("Please enter valid numbers!");
         return;
       }
     }
-    this.initializeAnimations(model, enteredWeights, animationSpeed, animationIterations);
+    let morphedAnimation = await morphAnimations(fileArray, enteredWeights, model);
+    mixer = new AnimationMixer(model);
+    let test = mixer.clipAction(morphedAnimation);
+    test.setLoop(LoopRepeat, Infinity);
+    test.setEffectiveWeight(1);
+    test.setEffectiveTimeScale(1);
+    test.play();
+
+    animationsToDownload.push(test._clip);
+    //this.initializeAnimations(model, enteredWeights, animationSpeed, animationIterations);
   }
 
   handleDownloadBtnClick(){
@@ -330,7 +339,7 @@ class World {
     const options = {
       fps: fps,
       //useTargetMatrix: true,
-      //.preservePosition: true,
+      preservePosition: true,
       //preserveHipPosition: true,
       //useFirstFramePosition: true
     };
@@ -354,9 +363,9 @@ class World {
     
     console.log(model.skeleton);
     
-    model.skeleton.bones.forEach( bone =>{
-      bone.scale.set(1,1,1);
-    });
+    // model.skeleton.bones.forEach( bone =>{
+    //   bone.scale.set(1,1,1);
+    // });
     
     //mixer = new AnimationMixer(model);
     //model.position.set(0,0,3);

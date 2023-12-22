@@ -17,32 +17,10 @@ async function loadBVHAnimation(animationBuffer){
     if (animation) {
       //animation.clip.tracks = animation.clip.tracks.filter(track => !(track instanceof VectorKeyframeTrack));
       //animation.skeleton.bones[0].position.set(0,0,0);
-      //test(animation);
       console.log(animation);
       resolve(animation);
     } else {
       reject(new Error('Failed to parse BVH animation.'));
-    }
-  });
-}
-
-function test(animation){
-  console.log(animation.clip);
-  animation.clip.tracks.forEach(track => {
-    if(track instanceof VectorKeyframeTrack){
-      let j = 0;
-      for(let i = 0; i < track.values.length; i++){
-        if(j === 0){
-          track.values[i] += 51;
-        }
-        else if(j === 1){
-          track.values[i] -= 98;
-        }
-        else if(j == 2){
-          track.values[i] += 10;
-          j = 0;
-        }
-      }
     }
   });
 }
