@@ -11,12 +11,17 @@ let animationsToApply = [];
 
 let baseAnimation;
 
+const trackNameList = [];
+
 async function morphAnimations(fileArray, weights, model){
   console.log(fileArray);
   animationsArray = await createAnimationsArray(fileArray, model);
+  //applyWeights VectoryKeyframeTrack not implemented
+  removeZeroWeightAnimationsFromArray(weights);
   applyWeights(weights);
   setBaseAnimation();
-  addMissingTracksToBaseAnimation();
+  fillTrackNameList();
+  //addMissingTracksToBaseAnimation();
   //addMissing teleports model to bottom
   normalizeKeyFrameTrackValueArrays();
   combineAnimations();
@@ -35,19 +40,62 @@ async function morphAnimations(fileArray, weights, model){
 function combineAnimations(){
   //maybe müssen alle mittelwerte direkt zusammengerechnet werden
   //und nicht immer nur 2 wie aktuell
-  animationsToApply.forEach(animation => {
-    animation.tracks.forEach(track => {
-      if(track.values.length <=4){
-        return;
-      }
-      let baseAnimationTrack = findTrackInBaseAnimations(track.name);
-      let index = baseAnimation.tracks.indexOf(baseAnimationTrack);
-      baseAnimation.tracks[index].values = calculateMeanFromToArrays(
-        track.values, 
-        baseAnimationTrack.values
-        );
-    });
-  });
+  let combineArray = [];
+
+  trackNameList.forEach(trackName =>{
+    animationsArray.forEach(animation =>{
+      animation.tracks.forEach(track =>{
+        if(track.name === trackName){
+          combineArray.push(track);
+          //break;
+        }
+      });
+    })
+    multiplyArrays(combineArray);
+    //tracks combinieren
+    //track in baseAnimation ersetzen
+  })
+  /////////////////////////////////////
+  // animationsToApply.forEach(animation => {
+  //   animation.tracks.forEach(track => {
+  //     if(track.values.length <=4){
+  //       return;
+  //     }
+  //     let baseAnimationTrack = findTrackInBaseAnimations(track.name);
+  //     let index = baseAnimation.tracks.indexOf(baseAnimationTrack);
+  //     baseAnimation.tracks[index].values = calculateMeanFromTwoArrays(
+  //       track.values, 
+  //       baseAnimationTrack.values
+  //       );
+  //   });
+  // });
+}
+
+function multiplyArrays(...arrays) {
+  console.log(arrays);
+  // Überprüfe, ob alle Arrays die gleiche Länge haben
+  const length = arrays[0].length;
+  if (arrays.some(array => array.length !== length)) {
+      console.error('Alle Arrays müssen die gleiche Länge haben.');
+      return;
+  }
+
+  // Multipliziere die Elemente der Arrays elementweise
+  const resultArray = arrays[0].map((_, index) =>
+      arrays.reduce((product, array) => product * array[index], 1)
+  );
+
+  return resultArray;
+}
+
+function removeZeroWeightAnimationsFromArray(weights){
+  console.log(weights);
+  for(let i = 0; i < weights.length; i++){
+    if(weights[i] === 0){
+      weights.splice(i, 1);
+      animationsArray.splice(i,1);
+    }
+  }
 }
 
 function findTrackInBaseAnimations(name){
@@ -59,7 +107,7 @@ function findTrackInBaseAnimations(name){
   return null;
 }
 
-function calculateMeanFromToArrays(array1, array2){
+function calculateMeanFromTwoArrays(array1, array2){
   if (array1.length !== array2.length) {
     throw new Error("Arrays are not the same length. Cant calculate Mean.");
   }
@@ -106,18 +154,21 @@ function normalizeValueArray(track, timesArray){
   newLength = timesArray.length * objectSize;
   
   for(let i = 0; i < valueArray.length; i+=objectSize){
-    console.log("test");
     for(let j = 0; j < objectSize; j++){
+      //add the values from one valueArray object to the new array
       newArray.push(valueArray[i+j]);
     }
 
     if(i+objectSize >= valueArray.length && 
         newArray.length < newLength){
+      //the new array is still to small
+      //so this function needs to be called again (recursivly)
       track.values = newArray;
       return normalizeValueArray(track, timesArray);
     }
 
     for(let j = 0; j < objectSize; j++){
+      //create a new mean object between two objects from the valueArray
       let mean = (valueArray[i + j] + valueArray[i+objectSize+j])
          / 2;
       newArray.push(mean);
@@ -129,6 +180,17 @@ function normalizeValueArray(track, timesArray){
   }
 
   return newArray;
+}
+
+function fillTrackNameList(){
+  //fill the list with all track names
+  animationsArray.forEach(animation =>{
+    animation.tracks.forEach(track =>{
+      if(!trackNameList.includes(track.name)){
+        trackNameList.push(track.name);
+      }
+    })
+  })
 }
 
 function addMissingTracksToBaseAnimation(){
