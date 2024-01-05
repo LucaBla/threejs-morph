@@ -1,7 +1,7 @@
 import { loadBVHAnimation } from "./bvhLoader";
 import { loadFBXAnimation } from "./fbxLoader";
 import { loadGLTFAnimation } from "./gltfLoader";
-import { Quaternion, QuaternionKeyframeTrack, SkeletonHelper, VectorKeyframeTrack } from "three";
+import { Bone, Matrix4, Quaternion, QuaternionKeyframeTrack, SkeletonHelper, Vector3, VectorKeyframeTrack } from "three";
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 
@@ -18,13 +18,13 @@ async function morphAnimations(fileArray, weights, model){
   animationsArray = await createAnimationsArray(fileArray, model);
   //applyWeights VectoryKeyframeTrack not implemented
   removeZeroWeightAnimationsFromArray(weights);
-  applyWeights(weights);
+  //applyWeights(weights, model);
   setBaseAnimation();
   fillTrackNameList();
   //addMissingTracksToBaseAnimation();
   //addMissing teleports model to bottom
   normalizeKeyFrameTrackValueArrays();
-  combineAnimations();
+  combineAnimations(weights);
   console.log(animationsArray);
   console.log(animationsToApply);
   console.log(baseAnimation);
@@ -37,7 +37,45 @@ async function morphAnimations(fileArray, weights, model){
   return baseAnimation;
 }
 
-function combineAnimations(){
+function weightedAverageQuaternions(quaternions, weights) {
+  // Überprüfe die Bedingungen
+  if (!quaternions || quaternions.length === 0 || !weights || weights.length < quaternions.length) {
+      console.log(quaternions);
+      console.log(weights);
+      console.error('Ungültige Eingabeparameter');
+      return null;
+  }
+
+  const count = quaternions.length;
+  let forwardSum = new Vector3();
+  let upwardSum = new Vector3();
+
+  for (let i = 0; i < count; i++) {
+      const weightedForward = new Vector3(0, 0, 1).applyQuaternion(quaternions[i]).multiplyScalar(weights[i]);
+      const weightedUpward = new Vector3(0, 1, 0).applyQuaternion(quaternions[i]).multiplyScalar(weights[i]);
+
+      forwardSum.add(weightedForward);
+      upwardSum.add(weightedUpward);
+  }
+
+  forwardSum.divideScalar(count);
+  upwardSum.divideScalar(count);
+
+  const resultQuaternion = new Quaternion();
+  const matrix = new Matrix4();
+
+  // Erzeuge eine Rotationsmatrix, die das Objekt auf den forward Vektor ausrichtet, mit upward als Orientierung
+  matrix.lookAt(forwardSum, new Vector3(), upwardSum);
+
+  // Setze das Quaternion basierend auf der Rotationsmatrix
+  resultQuaternion.setFromRotationMatrix(matrix);
+
+  console.log(resultQuaternion);
+
+  return resultQuaternion;
+}
+
+function combineAnimations(weights){
   //maybe müssen alle mittelwerte direkt zusammengerechnet werden
   //und nicht immer nur 2 wie aktuell
   let combineArray = [];
@@ -51,7 +89,40 @@ function combineAnimations(){
         }
       });
     })
-    multiplyArrays(combineArray);
+
+    const quaternionArray = [];
+    
+    combineArray.forEach(track =>{
+      if(track instanceof QuaternionKeyframeTrack){
+        quaternionArray.push(
+          getQuaternionsFromValuesArray(track.values)
+        );
+      }
+    })
+    combineArray = [];
+
+    if(quaternionArray.length > 0){
+      let averageArray = [];
+      const resultArray =[];
+      console.log(quaternionArray)
+      console.log(combineArray);
+      for(let i = 0; i < quaternionArray[0].length; i++){
+        for(let j = 0; j < quaternionArray.length; j++){
+          //j
+          averageArray.push(quaternionArray[j][i]);
+        }
+        resultArray.push(
+          weightedAverageQuaternions(averageArray, weights)
+        );
+        averageArray = [];
+      }
+      const newValues = [];
+      for (const quaternion of resultArray) {
+        newValues.push(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+      }
+      findTrackInBaseAnimations(trackName).values = newValues;
+    }
+    //multiplyArrays(combineArray);
     //tracks combinieren
     //track in baseAnimation ersetzen
   })
@@ -232,25 +303,67 @@ function getRequiredValueArraySize(track){
   }
 }
 
-function applyWeights(weights){
-  const identityQuaternion = new Quaternion(); 
-
+function applyWeights(weights, model){
   for(let i=0; i< animationsArray.length; i++){
     animationsArray[i].tracks.forEach(track => {
       if(!(track instanceof VectorKeyframeTrack)){
         let quaternionArray = getQuaternionsFromValuesArray(track.values);
+        let modelBone = getModelBoneFromTrack(track, model);
+
+        console.log(modelBone);
+        
         quaternionArray.forEach(quaternion => {
-          quaternion.slerp(identityQuaternion, (1- weights[i]/100));
+          quaternion.slerp(modelBone.quaternion, (1- weights[i]/100));
         });
         const newValues = [];
-        for (const quaternion of quaternionArray) {
-          newValues.push(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
-        }
+          for (const quaternion of quaternionArray) {
+            newValues.push(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+          }
         track.values = newValues;
       }
-      //track.values = track.values.map(value => value * (weights[i] /100));
     });
   }
+}
+
+function getModelBoneFromTrack(track, model){
+  const boneName = getBoneNameFromTrack(track);
+
+  
+  let skeleton;
+  
+  model.children.forEach(child =>{
+    if(child instanceof Bone){
+      skeleton = child;
+    }
+  })
+
+  return findBoneByName(skeleton, boneName);
+}
+
+function findBoneByName(skeleton, boneName) {
+  function recursiveSearch(bone) {
+    if (bone.name === boneName) {
+      return bone;
+    }
+
+    for (let i = 0; i < bone.children.length; i++) {
+      const foundBone = recursiveSearch(bone.children[i]);
+      if (foundBone) {
+        return foundBone;
+      }
+    }
+
+    return null;
+  }
+
+  return recursiveSearch(skeleton);
+}
+
+function getBoneNameFromTrack(track){
+  const trackName = track.name;
+
+  const trackNameParts = trackName.split('.');
+  return trackNameParts[0];
 }
 
 function getQuaternionsFromValuesArray(quaternionValues){
