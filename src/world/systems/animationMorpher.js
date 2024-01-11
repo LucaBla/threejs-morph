@@ -34,6 +34,10 @@ async function morphAnimations(fileArray, weights, model){
     console.log(track.validate());
   });
 
+  animationsArray[0].tracks.forEach(track=>{
+    console.log(track.validate());
+  });
+
   return baseAnimation;
 }
 
@@ -70,14 +74,11 @@ function weightedAverageQuaternions(quaternions, weights) {
   // Setze das Quaternion basierend auf der Rotationsmatrix
   resultQuaternion.setFromRotationMatrix(matrix);
 
-  console.log(resultQuaternion);
-
   return resultQuaternion;
 }
 
 function combineAnimations(weights){
-  //maybe müssen alle mittelwerte direkt zusammengerechnet werden
-  //und nicht immer nur 2 wie aktuell
+  //only works with quaternions for now
   let combineArray = [];
 
   trackNameList.forEach(trackName =>{
@@ -93,12 +94,15 @@ function combineAnimations(weights){
     const quaternionArray = [];
     
     combineArray.forEach(track =>{
-      if(track instanceof QuaternionKeyframeTrack){
+      if(track instanceof QuaternionKeyframeTrack &&
+        track.values.length > 4){
         quaternionArray.push(
           getQuaternionsFromValuesArray(track.values)
         );
       }
     })
+
+    console.log(combineArray);
     combineArray = [];
 
     if(quaternionArray.length > 0){
@@ -120,26 +124,15 @@ function combineAnimations(weights){
       for (const quaternion of resultArray) {
         newValues.push(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
       }
-      findTrackInBaseAnimations(trackName).values = newValues;
+      let foundTrack = findTrackInBaseAnimations(trackName);
+      if(foundTrack != null){
+        findTrackInBaseAnimations(trackName).values = newValues;
+      }
+      else{
+        console.error(`Track ${trackName} could not be found`);
+      }
     }
-    //multiplyArrays(combineArray);
-    //tracks combinieren
-    //track in baseAnimation ersetzen
   })
-  /////////////////////////////////////
-  // animationsToApply.forEach(animation => {
-  //   animation.tracks.forEach(track => {
-  //     if(track.values.length <=4){
-  //       return;
-  //     }
-  //     let baseAnimationTrack = findTrackInBaseAnimations(track.name);
-  //     let index = baseAnimation.tracks.indexOf(baseAnimationTrack);
-  //     baseAnimation.tracks[index].values = calculateMeanFromTwoArrays(
-  //       track.values, 
-  //       baseAnimationTrack.values
-  //       );
-  //   });
-  // });
 }
 
 function multiplyArrays(...arrays) {
@@ -190,67 +183,145 @@ function normalizeKeyFrameTrackValueArrays(){
   //normalizes all quaternion and Vector value-Arrays
   //for the animations in the animationsToApply-array
   animationsToApply.forEach(animation => {
+    animation.duration = baseAnimation.duration;
+
     animation.tracks.forEach(track =>{
-      if(track instanceof QuaternionKeyframeTrack ||
-          track instanceof VectorKeyframeTrack){
-        track.values = normalizeValueArray(
-          track, 
-          baseAnimation.tracks[0].times
-        );
-      }
+      // if(track instanceof QuaternionKeyframeTrack){
+      //   track.values = normalizeQuaternionValueArray(
+      //     track,
+      //     baseAnimation.tracks[0].times
+      //   )
+      // }
+      // else if(track instanceof VectorKeyframeTrack){
+      //   track.values = normalizeVectorValueArray(
+      //     track,
+      //     baseAnimation.tracks[0].times
+      //   )
+      // }
+      track.values = normalizeTracksValueArray(
+        track,
+        baseAnimation.tracks[0].times
+      )
     })
   });
 }
 
-function normalizeValueArray(track, timesArray){
-  //Works with Vector and Quaternion KeyFrameTracks
+function normalizeTracksValueArray(track, timesArray){
+
+  if(!(track instanceof VectorKeyframeTrack || 
+  track instanceof QuaternionKeyframeTrack)){
+    console.error("Track is not of type Quaternion or VectorKeyframeTrack");
+    return null
+  }
+
   let valueArray = track.values;
-  let newLength;
   let newArray = [];
-  let objectSize;
+  let componentSize;
+  let newLength;
+  let componentsArray = [];
+  let newComponentsArray = [];
 
   if(track instanceof QuaternionKeyframeTrack){
-    //Quaternion is representated by 4 values
-    objectSize = 4;
+    componentSize = 4;
+    componentsArray = getQuaternionsFromValuesArray(valueArray);
   }
   else if(track instanceof VectorKeyframeTrack){
-    //Vector is representated by 3 values
-    objectSize = 3;
+    componentSize = 3;
+    componentsArray = getVectorsFromValuesArray(valueArray);
   }
 
-  if(valueArray.length <= objectSize){
+  newLength = timesArray.length * componentSize;
+
+  if(valueArray.length === newLength){
+    //Track is the right size
+    track.times = baseAnimation.tracks[0].times;
     return valueArray;
   }
 
-  newLength = timesArray.length * objectSize;
+  if(valueArray.length <= componentSize){
+    //the array only contains one object
+    return valueArray;
+  }
+
+  for(let i = 0; i < componentsArray.length; i++){
+    newComponentsArray.push(componentsArray[i]);
+
+    if(newComponentsArray.length * componentSize === 
+        newLength){
+          break;
+    }
+
+    if( i === componentsArray.length - 1){
+      //stop the for-loop
+      //because there cant be a average quaternion between
+      //the last quaternion and a non existing one
+      break;
+    }
+
+    if(track instanceof QuaternionKeyframeTrack){
+      let newQuaternion = new Quaternion;
   
-  for(let i = 0; i < valueArray.length; i+=objectSize){
-    for(let j = 0; j < objectSize; j++){
-      //add the values from one valueArray object to the new array
-      newArray.push(valueArray[i+j]);
+      newComponentsArray.push(
+        //average of two quaternions
+        newQuaternion.slerpQuaternions(
+          componentsArray[i], 
+          componentsArray[i + 1], 
+          .5
+        )
+      );
+    }
+    else if(track instanceof VectorKeyframeTrack){
+      let newVector3 = new Vector3;
+
+      newComponentsArray.push(
+      //average of two quaternions
+      newVector3.lerpVectors(
+        componentsArray[i], 
+        componentsArray[i + 1], 
+        .5
+      )
+    );
     }
 
-    if(i+objectSize >= valueArray.length && 
-        newArray.length < newLength){
-      //the new array is still to small
-      //so this function needs to be called again (recursivly)
-      track.values = newArray;
-      return normalizeValueArray(track, timesArray);
-    }
-
-    for(let j = 0; j < objectSize; j++){
-      //create a new mean object between two objects from the valueArray
-      let mean = (valueArray[i + j] + valueArray[i+objectSize+j])
-         / 2;
-      newArray.push(mean);
-    }
-
-    if(newArray.length === newLength){
-      return newArray;
+    if(newComponentsArray.length * componentSize === 
+      newLength){
+        break;
     }
   }
 
-  return newArray;
+  if(track instanceof QuaternionKeyframeTrack){
+    for(const quaternion of newComponentsArray){
+      newArray.push(
+        quaternion.x, 
+        quaternion.y, 
+        quaternion.z, 
+        quaternion.w
+      );
+    }
+  }
+  else if(track instanceof VectorKeyframeTrack){
+    for(const vector of newComponentsArray){
+      newArray.push(
+        vector.x, 
+        vector.y, 
+        vector.z
+      );
+    }
+  }
+
+  if(newArray.length === newLength){
+    track.times = baseAnimation.tracks[0].times;
+    return newArray;
+  }
+  else if(newArray.length < newLength){
+    track.values = newArray;
+    return normalizeTracksValueArray(track, timesArray);
+  }
+  else{
+    console.error("ERROR size is: " + newArray.length + " Should be: " + newLength);
+    return null;
+  }
+  
 }
 
 function fillTrackNameList(){
@@ -366,6 +437,20 @@ function getBoneNameFromTrack(track){
   return trackNameParts[0];
 }
 
+function getVectorsFromValuesArray(vectorValues){
+  let vectorArray =[];
+
+  for (let i = 0; i < vectorValues.length; i += 3) {
+      const vector3 = new Vector3(
+        vectorValues[i],
+        vectorValues[i + 1],
+        vectorValues[i + 2]
+      );
+      vectorArray.push(vector3);
+  }
+  return vectorArray;
+}
+
 function getQuaternionsFromValuesArray(quaternionValues){
   let quaternionArray =[];
 
@@ -399,6 +484,7 @@ async function createAnimationsArray(fileArray, model){
     else if(animationFile.name.toLowerCase().endsWith('.glb')){
       animation = await loadGLTFAnimation(animationFile.content);
     }
+    animation.name = animationFile.name.toLowerCase();
     animationsArray.push(animation);
   }
 
