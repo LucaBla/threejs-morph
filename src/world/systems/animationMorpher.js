@@ -46,11 +46,11 @@ function weightedAverageQuaternions(quaternions, weights) {
   let upwardSum = new Vector3();
 
   for (let i = 0; i < count; i++) {
-      const weightedForward = new Vector3(0, 0, 1).applyQuaternion(quaternions[i]).multiplyScalar(weights[i]);
-      const weightedUpward = new Vector3(0, 1, 0).applyQuaternion(quaternions[i]).multiplyScalar(weights[i]);
+    const weightedForward = new Vector3(0, 0, 1).applyQuaternion(quaternions[i]).multiplyScalar(weights[i]);
+    const weightedUpward = new Vector3(0, 1, 0).applyQuaternion(quaternions[i]).multiplyScalar(weights[i]);
 
-      forwardSum.add(weightedForward);
-      upwardSum.add(weightedUpward);
+    forwardSum.add(weightedForward);
+    upwardSum.add(weightedUpward);
   }
 
   forwardSum.divideScalar(count);
@@ -365,9 +365,9 @@ function findTrackInBaseAnimations(name){
 function normalizeKeyFrameTrackValueArrays(){
   //normalizes all quaternion and Vector value-Arrays
   for(const animation of animationsArray){
-    if(animation === baseAnimation){
-      continue;
-    }
+    // if(animation === baseAnimation){
+    //   continue;
+    // }
 
     animation.duration = baseAnimation.duration;
 
@@ -381,7 +381,6 @@ function normalizeKeyFrameTrackValueArrays(){
 }
 
 function normalizeTracksValueArray(track, timesArray){
-
   if(!(track instanceof VectorKeyframeTrack || 
   track instanceof QuaternionKeyframeTrack)){
     console.error("Track is not of type Quaternion or VectorKeyframeTrack");
