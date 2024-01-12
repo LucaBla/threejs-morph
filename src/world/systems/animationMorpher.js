@@ -25,9 +25,7 @@ async function morphAnimations(fileArray, weights, model){
     console.log(track.validate());
   });
 
-  animationsArray[0].tracks.forEach(track=>{
-    console.log(track.validate());
-  });
+  //baseAnimation.tracks[0].values = baseAnimation.tracks[0].values.map(() => 0)
 
   console.log(baseAnimation);
 
@@ -115,7 +113,7 @@ function combineAnimations(weights){
           if(trackType === 'quaternion'){
             element = getQuaternionsFromValuesArray(track.values);
           }
-          else if(trackType === 'position'){
+          else if(trackType === 'position' || trackType === 'scale'){
             element = getVectorsFromValuesArray(track.values);
           }
           else{
@@ -150,6 +148,19 @@ function combineAnimations(weights){
   }
 }
 
+function getTypeFromTrack(track){
+  if(track instanceof VectorKeyframeTrack){
+    return Vector3.constructor;
+  }
+  else if(track instanceof QuaternionKeyframeTrack){
+    return Quaternion.constructor;
+  }
+  else{
+    console.error("Invalid Type!");
+    return null;
+  }
+}
+
 function findFirstNameInTrackList(trackList){
   for(const track of trackList){
     if(track !== null){
@@ -168,7 +179,7 @@ function addTrackToBaseAnimation(trackName, trackType, newValues){
       newValues
     )
   }
-  else if(trackType === 'position'){
+  else if(trackType === 'position' || trackType === 'scale'){
     newTrack = new VectorKeyframeTrack(
       trackName, 
       baseAnimation.tracks[0].times, 
@@ -176,7 +187,7 @@ function addTrackToBaseAnimation(trackName, trackType, newValues){
     )
   }
   else{
-    console.error('Invalid Type!');
+    console.error('Invalid Type!' + trackType);
   }
 
   baseAnimation.tracks.push(newTrack);
@@ -265,8 +276,6 @@ function weightedAverageElementArray(elementArray, weights){
   const tempWeights = [...weights];
   const type = findFirstTypeInElementList(elementArray);
 
-  console.log(weights);
-
   if(elementArray.length > 0){
     const sameIndexElements = [];
     const averagedElementsArrays = [];
@@ -275,14 +284,25 @@ function weightedAverageElementArray(elementArray, weights){
     //const elementsArrayElementLength = elementArray[0].length;
     const elementsArrayElementLength = 
       findFirstLengthInElementLists(elementArray);
+
+      const indexesToRemove = [];
+      for(let i = 0; i < elementsArrayElementLength; i++){
+        if(elementArray[i] === null){
+          //this track had no element with this name
+          //so its removed because it cant be used to calculate the average
+          indexesToRemove.push(i);
+          //elementArray.splice(i, 1);
+          //tempWeights.splice(i, 1);
+        }
+      }
+      
+      for (let i = indexesToRemove.length - 1; i >= 0; i--) {
+        const index = indexesToRemove[i];
+        elementArray.splice(index, 1);
+        tempWeights.splice(index, 1);
+      }
     
     for(let i = 0; i < elementsArrayElementLength; i++){
-      if(elementArray[i] === null){
-        //this track had no element with this name
-        //so its removed because it cant be used to calculate the average
-        elementArray.splice(i, 1);
-        tempWeights.splice(i, 1);
-      }
       for(let j = 0; j < elementArray.length; j++){
         sameIndexElements.push(elementArray[j][i]);
       }
