@@ -70,21 +70,13 @@ class World {
   }
 
   async initializeAnimations(model, weights, animationSpeed, loopAmount){
-    // let animations = await this.createAnimationsArray(
-    //   [
-    //     'assets/animations/rightHook.fbx',
-    //     'assets/animations/handRaising.fbx',
-    //     'assets/animations/fistPump.fbx'
-    //   ]);
     let animations = await this.createAnimationsArray();
       let actionsArray = [];
 
-      this.normalizeTimeTracks(animations, weights);
+      //mixer = new AnimationMixer(model);
 
-      mixer = new AnimationMixer(model);
-
-      actionsArray = this.clipActions(mixer, animations);
-      this.setupActions(actionsArray, weights, animationSpeed, loopAmount);
+      //actionsArray = this.clipActions(mixer, animations);
+      //this.setupActions(actionsArray, weights, animationSpeed, loopAmount);
   }
 
   normalizeTimeTracks(actionArray, weights){
@@ -263,7 +255,9 @@ class World {
     }
   }
 
-  async handleStartBtnClick(enteredWeights, animationSpeed, animationIterations){
+  async handleStartBtnClick(enteredWeights, animationSpeed, 
+      animationIterations){
+    animationsToDownload = [];
     for(const number of enteredWeights){
       if(isNaN(number)){
         alert("Please enter valid numbers!");
@@ -272,13 +266,19 @@ class World {
     }
     let morphedAnimation = await morphAnimations(fileArray, enteredWeights, model);
     mixer = new AnimationMixer(model);
-    let test = mixer.clipAction(morphedAnimation);
-    test.setLoop(LoopRepeat, Infinity);
-    test.setEffectiveWeight(1);
-    test.setEffectiveTimeScale(1);
-    test.play();
+    const clippedMorphedAnim = mixer.clipAction(morphedAnimation);
 
-    animationsToDownload.push(test._clip);
+    if(animationIterations === 0){
+      clippedMorphedAnim.setLoop(LoopRepeat, Infinity);
+    }
+    else{
+      clippedMorphedAnim.setLoop(LoopRepeat, animationIterations);
+    }
+    clippedMorphedAnim.setEffectiveWeight(1);
+    clippedMorphedAnim.setEffectiveTimeScale(animationSpeed);
+    clippedMorphedAnim.play();
+
+    animationsToDownload.push(clippedMorphedAnim._clip);
     //this.initializeAnimations(model, enteredWeights, animationSpeed, animationIterations);
   }
 

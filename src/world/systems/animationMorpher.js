@@ -7,8 +7,6 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 let animationsArray = [];
 
-let animationsToApply = [];
-
 let baseAnimation;
 
 const trackNameList = [];
@@ -16,19 +14,12 @@ const trackNameList = [];
 async function morphAnimations(fileArray, weights, model){
   console.log(fileArray);
   animationsArray = await createAnimationsArray(fileArray, model);
-  //applyWeights VectoryKeyframeTrack not implemented
+
   removeZeroWeightAnimationsFromArray(weights);
-  //applyWeights(weights, model);
   setBaseAnimation();
   fillTrackNameList();
-  //addMissingTracksToBaseAnimation();
-  //addMissing teleports model to bottom
   normalizeKeyFrameTrackValueArrays();
   combineAnimations(weights);
-  console.log(animationsArray);
-  console.log(animationsToApply);
-  console.log(baseAnimation);
-  console.log(weights);
 
   baseAnimation.tracks.forEach(track=>{
     console.log(track.validate());
@@ -38,16 +29,18 @@ async function morphAnimations(fileArray, weights, model){
     console.log(track.validate());
   });
 
+  console.log(baseAnimation);
+
   return baseAnimation;
 }
 
 function weightedAverageQuaternions(quaternions, weights) {
-  // Überprüfe die Bedingungen
-  if (!quaternions || quaternions.length === 0 || !weights || weights.length < quaternions.length) {
-      console.log(quaternions);
-      console.log(weights);
-      console.error('Ungültige Eingabeparameter');
-      return null;
+  if (quaternions.length === 0 || 
+      weights.length !== quaternions.length) {
+    console.error('Ungültige Eingabeparameter');
+    console.log(quaternions);
+    console.log(weights);
+    return null;
   }
 
   const count = quaternions.length;
@@ -68,88 +61,266 @@ function weightedAverageQuaternions(quaternions, weights) {
   const resultQuaternion = new Quaternion();
   const matrix = new Matrix4();
 
-  // Erzeuge eine Rotationsmatrix, die das Objekt auf den forward Vektor ausrichtet, mit upward als Orientierung
+  //Create a rotation matrix 
+  //that aligns the object to the forward vector, 
+  //with upward as the orientation
   matrix.lookAt(forwardSum, new Vector3(), upwardSum);
 
-  // Setze das Quaternion basierend auf der Rotationsmatrix
+  //set the quaternion based on the rotation matrix
   resultQuaternion.setFromRotationMatrix(matrix);
 
   return resultQuaternion;
 }
 
-function combineAnimations(weights){
-  //only works with quaternions for now
-  let combineArray = [];
-
-  trackNameList.forEach(trackName =>{
-    animationsArray.forEach(animation =>{
-      animation.tracks.forEach(track =>{
-        if(track.name === trackName){
-          combineArray.push(track);
-          //break;
-        }
-      });
-    })
-
-    const quaternionArray = [];
-    
-    combineArray.forEach(track =>{
-      if(track instanceof QuaternionKeyframeTrack &&
-        track.values.length > 4){
-        quaternionArray.push(
-          getQuaternionsFromValuesArray(track.values)
-        );
-      }
-    })
-
-    console.log(combineArray);
-    combineArray = [];
-
-    if(quaternionArray.length > 0){
-      let averageArray = [];
-      const resultArray =[];
-      console.log(quaternionArray)
-      console.log(combineArray);
-      for(let i = 0; i < quaternionArray[0].length; i++){
-        for(let j = 0; j < quaternionArray.length; j++){
-          //j
-          averageArray.push(quaternionArray[j][i]);
-        }
-        resultArray.push(
-          weightedAverageQuaternions(averageArray, weights)
-        );
-        averageArray = [];
-      }
-      const newValues = [];
-      for (const quaternion of resultArray) {
-        newValues.push(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
-      }
-      let foundTrack = findTrackInBaseAnimations(trackName);
-      if(foundTrack != null){
-        findTrackInBaseAnimations(trackName).values = newValues;
-      }
-      else{
-        console.error(`Track ${trackName} could not be found`);
-      }
-    }
-  })
-}
-
-function multiplyArrays(...arrays) {
-  console.log(arrays);
-  // Überprüfe, ob alle Arrays die gleiche Länge haben
-  const length = arrays[0].length;
-  if (arrays.some(array => array.length !== length)) {
-      console.error('Alle Arrays müssen die gleiche Länge haben.');
-      return;
+function weightedAverageVector3(vectors, weights){
+  if (vectors.length === 0 || vectors.length !== weights.length) {
+    console.log(vectors.length);
+    console.log(weights.length);
+    console.error("VectorList is empty or has a different size than the weightsList");
+    return null;
   }
 
-  // Multipliziere die Elemente der Arrays elementweise
-  const resultArray = arrays[0].map((_, index) =>
-      arrays.reduce((product, array) => product * array[index], 1)
+  let weightedSum = new Vector3();
+
+  for (let i = 0; i < vectors.length; i++) {
+    const weightedVector = vectors[i].clone().multiplyScalar(weights[i]);
+    weightedSum.add(weightedVector);
+  }
+
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+
+  if (totalWeight !== 0) {
+    const average = weightedSum.divideScalar(totalWeight);
+    return average;
+  } else {
+    console.error("totalWeight is 0!");
+    return null;
+  }
+}
+
+function combineAnimations(weights){
+  //only works with quaternions and vector3 for now
+  const tracksToCombineList = getTracksToCombineList();
+
+  for(const sameNamedTracks of tracksToCombineList) {
+    console.log(sameNamedTracks);
+    const trackName = findFirstNameInTrackList(sameNamedTracks);
+    const trackType = trackName.split('.')[1];
+      //elements meaning quaternion or vector3
+      const elementsTracksArrays = [];
+
+      sameNamedTracks.forEach(track => {
+        if(track !== null){
+          let element;
+          if(trackType === 'quaternion'){
+            element = getQuaternionsFromValuesArray(track.values);
+          }
+          else if(trackType === 'position'){
+            element = getVectorsFromValuesArray(track.values);
+          }
+          else{
+            console.error('Invalid Type!');
+          }
+
+          elementsTracksArrays.push(element);
+        }
+        else{
+          elementsTracksArrays.push(null);
+        }
+      })
+
+      let averagedElementsArray = 
+        weightedAverageElementArray(elementsTracksArrays, weights);
+      
+        const newValuesArray = [];
+
+        for(const element of averagedElementsArray){
+          newValuesArray.push(
+            ...elementToArray(element)
+          );
+        }
+
+        if(findTrackInBaseAnimations(trackName)){
+          exchangeTrackValuesInBaseAnimation(newValuesArray, trackName);
+        }
+        else{
+        //track could not be found in baseAnimation
+        addTrackToBaseAnimation(trackName, trackType, newValuesArray);
+        }
+  }
+}
+
+function findFirstNameInTrackList(trackList){
+  for(const track of trackList){
+    if(track !== null){
+      return track.name;
+    }
+  }
+}
+
+function addTrackToBaseAnimation(trackName, trackType, newValues){
+  let newTrack;
+
+  if(trackType === 'quaternion'){
+    newTrack = new QuaternionKeyframeTrack(
+      trackName, 
+      baseAnimation.tracks[0].times, 
+      newValues
+    )
+  }
+  else if(trackType === 'position'){
+    newTrack = new VectorKeyframeTrack(
+      trackName, 
+      baseAnimation.tracks[0].times, 
+      newValues
+    )
+  }
+  else{
+    console.error('Invalid Type!');
+  }
+
+  baseAnimation.tracks.push(newTrack);
+}
+
+function exchangeTrackValuesInBaseAnimation(newValues, trackName){
+  let foundTrack = findTrackInBaseAnimations(trackName);
+    if(foundTrack != null){
+      findTrackInBaseAnimations(trackName).values = newValues;
+    }
+}
+
+function elementToArray(element){
+  if(element instanceof Quaternion){
+    return quaternionToArray(element);
+  }
+  else if(element instanceof Vector3){
+    return vector3ToArray(element);
+  }
+  else{
+    console.error("Invalid Type!");
+    return null;
+  }
+}
+
+function quaternionToArray(quaternion){
+  let result = [];
+
+  result.push(
+    quaternion.x,
+    quaternion.y,
+    quaternion.z,
+    quaternion.w
   );
 
-  return resultArray;
+  return(result);
+}
+
+function vector3ToArray(vector3){
+  let result = [];
+
+  result.push(
+    vector3.x,
+    vector3.y,
+    vector3.z
+  );
+
+  return(result);
+}
+
+function getTracksToCombineList(){
+  const tracksToCombineList = [];
+  let sameNamedTracks = [];
+
+  //find all the tracks with the same name
+  trackNameList.forEach(trackName =>{
+    animationsArray.forEach(animation =>{
+      let searchedTrack = findTrackInAnimation(animation, trackName);
+      sameNamedTracks.push(searchedTrack);
+    })
+
+    tracksToCombineList.push(sameNamedTracks);
+    sameNamedTracks = [];
+  })
+
+  return tracksToCombineList;
+}
+
+function findFirstTypeInElementList(elementList){
+  for(const element of elementList){
+    if(element !== null){
+      return element[0].constructor;
+    }
+  }
+}
+
+function findFirstLengthInElementLists(elementList){
+  for(const element of elementList){
+    if(element !== null){
+      return element.length;
+    }
+  }
+}
+
+function weightedAverageElementArray(elementArray, weights){
+  const tempWeights = [...weights];
+  const type = findFirstTypeInElementList(elementArray);
+
+  console.log(weights);
+
+  if(elementArray.length > 0){
+    const sameIndexElements = [];
+    const averagedElementsArrays = [];
+
+    //the size of all the quaternion arrays in quaternionTracksArrays
+    //const elementsArrayElementLength = elementArray[0].length;
+    const elementsArrayElementLength = 
+      findFirstLengthInElementLists(elementArray);
+    
+    for(let i = 0; i < elementsArrayElementLength; i++){
+      if(elementArray[i] === null){
+        //this track had no element with this name
+        //so its removed because it cant be used to calculate the average
+        elementArray.splice(i, 1);
+        tempWeights.splice(i, 1);
+      }
+      for(let j = 0; j < elementArray.length; j++){
+        sameIndexElements.push(elementArray[j][i]);
+      }
+      let weightedElement;
+      if(type === Quaternion){
+        weightedElement = weightedAverageQuaternions(
+          sameIndexElements, tempWeights)
+      }
+      else if(type === Vector3){
+        weightedElement = weightedAverageVector3(sameIndexElements, 
+          tempWeights)
+      }
+      else{
+        console.error("Type Error " + type);
+      }
+      
+      averagedElementsArrays.push(
+        weightedElement
+      );
+
+      sameIndexElements.length = 0;
+    }
+
+    return(averagedElementsArrays);
+  }
+  console.error("Could not weight Quaternion Array!");
+  return null;
+}
+
+function findTrackInAnimation(animation, trackName){
+  for(const track of animation.tracks){
+    if(track.name === trackName){
+      return track;
+    }
+  }
+
+  console.warn(`Could not find track:\n ${trackName}\n in Animation:\n ${animation.name}`);
+  return null;
 }
 
 function removeZeroWeightAnimationsFromArray(weights){
@@ -171,39 +342,22 @@ function findTrackInBaseAnimations(name){
   return null;
 }
 
-function calculateMeanFromTwoArrays(array1, array2){
-  if (array1.length !== array2.length) {
-    throw new Error("Arrays are not the same length. Cant calculate Mean.");
-  }
-
-  return array1.map((value, index) => value );
-}
-
 function normalizeKeyFrameTrackValueArrays(){
   //normalizes all quaternion and Vector value-Arrays
-  //for the animations in the animationsToApply-array
-  animationsToApply.forEach(animation => {
+  for(const animation of animationsArray){
+    if(animation === baseAnimation){
+      continue;
+    }
+
     animation.duration = baseAnimation.duration;
 
     animation.tracks.forEach(track =>{
-      // if(track instanceof QuaternionKeyframeTrack){
-      //   track.values = normalizeQuaternionValueArray(
-      //     track,
-      //     baseAnimation.tracks[0].times
-      //   )
-      // }
-      // else if(track instanceof VectorKeyframeTrack){
-      //   track.values = normalizeVectorValueArray(
-      //     track,
-      //     baseAnimation.tracks[0].times
-      //   )
-      // }
       track.values = normalizeTracksValueArray(
         track,
         baseAnimation.tracks[0].times
       )
     })
-  });
+  }
 }
 
 function normalizeTracksValueArray(track, timesArray){
@@ -240,7 +394,9 @@ function normalizeTracksValueArray(track, timesArray){
 
   if(valueArray.length <= componentSize){
     //the array only contains one object
-    return valueArray;
+    //double it so the function can then fill it
+    componentsArray = componentsArray.concat(componentsArray);
+    //return valueArray;
   }
 
   for(let i = 0; i < componentsArray.length; i++){
@@ -274,7 +430,7 @@ function normalizeTracksValueArray(track, timesArray){
       let newVector3 = new Vector3;
 
       newComponentsArray.push(
-      //average of two quaternions
+      //average of two vectors
       newVector3.lerpVectors(
         componentsArray[i], 
         componentsArray[i + 1], 
@@ -333,108 +489,6 @@ function fillTrackNameList(){
       }
     })
   })
-}
-
-function addMissingTracksToBaseAnimation(){
-  //add tracks that the other animations have, 
-  //that are missing in baseAnimation
-  animationsToApply.forEach(animation => {
-    animation.tracks.forEach(track =>{
-      if(!baseAnimationContainsTrack(track)){
-        let newTrack = createNewTrack(track);
-
-        newTrack.times = baseAnimation.tracks[0].times;
-        
-        let valueArraySize = getRequiredValueArraySize(newTrack);
-        newTrack.values = new Array(valueArraySize).fill(0);
-
-        baseAnimation.tracks.push(newTrack);
-      }
-    })
-  });
-}
-
-function createNewTrack(oldTrack){
-  if(oldTrack instanceof QuaternionKeyframeTrack){
-    return new QuaternionKeyframeTrack(oldTrack.name,
-      oldTrack.times, oldTrack.values);
-  }
-  else if(oldTrack instanceof VectorKeyframeTrack){
-    return new VectorKeyframeTrack(oldTrack.name,
-      oldTrack.times, oldTrack.values);
-  }
-}
-
-function getRequiredValueArraySize(track){
-  if(track instanceof QuaternionKeyframeTrack){
-    return track.times.length * 4;
-  }
-  else{
-    return track.times.length * 3;
-  }
-}
-
-function applyWeights(weights, model){
-  for(let i=0; i< animationsArray.length; i++){
-    animationsArray[i].tracks.forEach(track => {
-      if(!(track instanceof VectorKeyframeTrack)){
-        let quaternionArray = getQuaternionsFromValuesArray(track.values);
-        let modelBone = getModelBoneFromTrack(track, model);
-
-        console.log(modelBone);
-        
-        quaternionArray.forEach(quaternion => {
-          quaternion.slerp(modelBone.quaternion, (1- weights[i]/100));
-        });
-        const newValues = [];
-          for (const quaternion of quaternionArray) {
-            newValues.push(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
-          }
-        track.values = newValues;
-      }
-    });
-  }
-}
-
-function getModelBoneFromTrack(track, model){
-  const boneName = getBoneNameFromTrack(track);
-
-  
-  let skeleton;
-  
-  model.children.forEach(child =>{
-    if(child instanceof Bone){
-      skeleton = child;
-    }
-  })
-
-  return findBoneByName(skeleton, boneName);
-}
-
-function findBoneByName(skeleton, boneName) {
-  function recursiveSearch(bone) {
-    if (bone.name === boneName) {
-      return bone;
-    }
-
-    for (let i = 0; i < bone.children.length; i++) {
-      const foundBone = recursiveSearch(bone.children[i]);
-      if (foundBone) {
-        return foundBone;
-      }
-    }
-
-    return null;
-  }
-
-  return recursiveSearch(skeleton);
-}
-
-function getBoneNameFromTrack(track){
-  const trackName = track.name;
-
-  const trackNameParts = trackName.split('.');
-  return trackNameParts[0];
 }
 
 function getVectorsFromValuesArray(vectorValues){
@@ -499,22 +553,6 @@ function setBaseAnimation(){
         baseAnimation = animation;
     }
   });
-
-  animationsToApply = [...animationsArray];
-
-  let baseAnimationIndex = animationsToApply.indexOf(baseAnimation);
-  
-  animationsToApply.splice(baseAnimationIndex, 1);
-}
-
-function baseAnimationContainsTrack(trackToCheck){
-  for (const track of baseAnimation.tracks) {
-    if (track.name === trackToCheck.name) {
-      console.log(`${track.name} is equal to ${trackToCheck.name}`);
-      return true;
-    }
-  }
-  return false;
 }
 
 function retargetBVH(animation, model){
