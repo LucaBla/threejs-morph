@@ -51,6 +51,7 @@ label{
   background-color: black;
   color: white;
   gap: 20px;
+  overflow-y: scroll;
 }
 
 #model-input-wrapper{
@@ -212,6 +213,18 @@ label{
   border: none;
   padding: 3% 9%;
   font-size: 20px;
+}
+
+#start-btn:disabled{
+  background-color: grey;
+  color: rgb(187, 187, 187);
+  cursor: not-allowed;
+}
+
+#download-btn:disabled{
+  background-color: grey;
+  color: rgb(187, 187, 187);
+  cursor: not-allowed;
 }
 
 .annotation{

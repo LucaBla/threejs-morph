@@ -1,31 +1,33 @@
-import { loadBVHAnimation } from "./bvhLoader";
+import { loadBVHAnimation, retargetBVH } from "./bvhLoader";
 import { loadFBXAnimation } from "./fbxLoader";
 import { loadGLTFAnimation } from "./gltfLoader";
-import { Bone, Matrix4, Quaternion, QuaternionKeyframeTrack, SkeletonHelper, Vector3, VectorKeyframeTrack } from "three";
-import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { Matrix4, Quaternion, QuaternionKeyframeTrack, Vector3, VectorKeyframeTrack } from "three";
 
 
 let animationsArray = [];
 
 let baseAnimation;
 
-const trackNameList = [];
+let trackNameList;
 
-async function morphAnimations(fileArray, weights, model){
-  console.log(fileArray);
+async function morphAnimations(fileArray, weights, model, isHipsRotationLocked){
   animationsArray = await createAnimationsArray(fileArray, model);
 
-  removeZeroWeightAnimationsFromArray(weights);
-  setBaseAnimation();
+  let weightsCopy = removeZeroWeightAnimationsFromArray(weights);
+  baseAnimation = findBaseAnimation();
+  trackNameList = [];
   fillTrackNameList();
   normalizeKeyFrameTrackValueArrays();
-  combineAnimations(weights);
+  combineAnimations(weightsCopy);
 
   baseAnimation.tracks.forEach(track=>{
-    console.log(track.validate());
+    track.validate();
   });
 
-  //baseAnimation.tracks[0].values = baseAnimation.tracks[0].values.map(() => 0)
+  if(isHipsRotationLocked){
+    findTrackInBaseAnimations("Hips.quaternion").values = baseAnimation.tracks[0].values.map(() => 0);
+  }
+
 
   console.log(baseAnimation);
 
@@ -97,11 +99,9 @@ function weightedAverageVector3(vectors, weights){
 }
 
 function combineAnimations(weights){
-  //only works with quaternions and vector3 for now
   const tracksToCombineList = getTracksToCombineList();
 
   for(const sameNamedTracks of tracksToCombineList) {
-    console.log(sameNamedTracks);
     const trackName = findFirstNameInTrackList(sameNamedTracks);
     const trackType = trackName.split('.')[1];
       //elements meaning quaternion or vector3
@@ -179,7 +179,14 @@ function addTrackToBaseAnimation(trackName, trackType, newValues){
       newValues
     )
   }
-  else if(trackType === 'position' || trackType === 'scale'){
+  else if(trackType === 'position'){
+    newTrack = new VectorKeyframeTrack(
+      trackName, 
+      baseAnimation.tracks[0].times, 
+      newValues
+    )
+  }
+  else if(trackType === 'scale'){
     newTrack = new VectorKeyframeTrack(
       trackName, 
       baseAnimation.tracks[0].times, 
@@ -280,8 +287,7 @@ function weightedAverageElementArray(elementArray, weights){
     const sameIndexElements = [];
     const averagedElementsArrays = [];
 
-    //the size of all the quaternion arrays in quaternionTracksArrays
-    //const elementsArrayElementLength = elementArray[0].length;
+    //the size of all the element arrays in elementArray
     const elementsArrayElementLength = 
       findFirstLengthInElementLists(elementArray);
 
@@ -291,8 +297,6 @@ function weightedAverageElementArray(elementArray, weights){
           //this track had no element with this name
           //so its removed because it cant be used to calculate the average
           indexesToRemove.push(i);
-          //elementArray.splice(i, 1);
-          //tempWeights.splice(i, 1);
         }
       }
       
@@ -344,13 +348,16 @@ function findTrackInAnimation(animation, trackName){
 }
 
 function removeZeroWeightAnimationsFromArray(weights){
-  console.log(weights);
-  for(let i = 0; i < weights.length; i++){
-    if(weights[i] === 0){
-      weights.splice(i, 1);
+  let weightsCopy = [...weights];
+
+  for(let i = weights.length -1; i >= 0; i--){
+    if(weightsCopy[i] === 0){
+      weightsCopy.splice(i, 1);
       animationsArray.splice(i,1);
     }
   }
+
+  return weightsCopy;
 }
 
 function findTrackInBaseAnimations(name){
@@ -540,11 +547,9 @@ function getQuaternionsFromValuesArray(quaternionValues){
 }
 
 async function createAnimationsArray(fileArray, model){
-  console.log(fileArray);
   let animationsArray = [];
 
   for (const animationFile of fileArray) {
-    console.log(animationFile);
     let animation = null;
 
     if(animationFile.name.toLowerCase().endsWith('.fbx')){
@@ -564,80 +569,18 @@ async function createAnimationsArray(fileArray, model){
   return animationsArray;
 }
 
-function setBaseAnimation(){
+function findBaseAnimation(){
   //sets the animation with the longest duration as baseAnimation
+  let newBaseAnimation;
+
   animationsArray.forEach(animation => {
-    if(baseAnimation === undefined || 
-      baseAnimation.duration < animation.duration){
-        baseAnimation = animation;
+    if(newBaseAnimation === undefined || 
+      newBaseAnimation.duration < animation.duration){
+        newBaseAnimation = animation;
     }
   });
-}
 
-function retargetBVH(animation, model){
-  let skeletonHelper;
-  
-  const clip = animation.clip;
-  const skeleton = animation.skeleton;
-
-  skeletonHelper = new SkeletonHelper(skeleton.bones[0]);
-  skeletonHelper.skeleton = skeleton;
-
-  skeletonHelper.rotation.set(90,90,90);
-  
-  console.log(skeleton);
-  
-  if(!model.skeleton){
-    model.traverse(child =>{
-      if(child.skeleton){
-        model.skeleton = child.skeleton;
-      }
-    })
-  }
-  // *Special Note* SkeletonUtils.retargetClip seems to output an animationClip
-  // with more frames (time arrays) than necessary and a reduced duration.
-  // I'm supplying fps and modifying input clip duration to fix that
-  
-  /* get fps from first track. */
-  const fps = 1 / clip.tracks[0].times[1] || 1;
-  clip.duration += 1 / fps;
-  
-  const options = {
-    fps: fps,
-    //useTargetMatrix: true,
-    //preservePosition: true,
-    //preserveHipPosition: true,
-    //useFirstFramePosition: true
-  };
-  
-  console.log(model);
-  const newClip = SkeletonUtils.retargetClip(model.children[1], skeletonHelper, clip, options);
-  console.log(model);
-  
-  model.traverse(function(child) {
-    if (child.type === "SkinnedMesh") {
-      child.pose();
-    }
-  });
-  
-  newClip.tracks.forEach( track =>{
-    if(track.name.includes("[")){
-      track.name = track.name.replace(".bones[", "").replace(/\]/g, "");
-    }
-  });
-  
-  console.log(model.skeleton);
-  
-  // model.skeleton.bones.forEach( bone =>{
-  //   bone.scale.set(1,1,1);
-  // });
-  
-  //mixer = new AnimationMixer(model);
-  //model.position.set(0,0,3);
-  
-  console.log(newClip);
-  console.log(model);
-  return newClip
+  return newBaseAnimation.clone();
 }
 
 export { morphAnimations}

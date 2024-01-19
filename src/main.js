@@ -10,6 +10,8 @@ const weightInputWrapper = document.getElementById('weight-input-wrapper');
 
 const skeletonInput = document.getElementById('skeleton-input');
 
+const hipRotationInput = document.getElementById('hip-rotation-input');
+
 const startBtn = document.getElementById("start-btn");
 
 const downloadBtn = document.getElementById("download-btn");
@@ -31,8 +33,13 @@ let activeModel = document.getElementsByClassName('switch-model-btn-active')[0];
 let actionWeightInputs = document.getElementsByClassName("weight-input");
 
 let enteredWeights = [];
+let fileAndInputArray=[];
 let animationSpeed = 1;
 let animationIterations = 1;
+
+document.addEventListener('animationsMorphedEvent', function(event) {
+  unlockDownloadButton();
+});
 
 async function main() {
   world.render();
@@ -42,6 +49,7 @@ async function main() {
   animate(world);
 
   initializeEventListener();
+  lockDownloadButton();
 }
 
 function animate(world){
@@ -69,13 +77,22 @@ function initializeEventListener(){
     world.handleSkeletonCheckBoxChange(skeletonInput.checked);
   })
 
+  hipRotationInput.addEventListener("change", ()=>{
+    world.handleHipRotationCheckBoxChange(hipRotationInput.checked);
+  });
+
   startBtn.addEventListener("click", () => {
     const weightSum = sumUpWeights();
     if(weightSum >100 || weightSum < 99){
       alert("The sum of the weights must be 100 or 99!");
     }
     else{
-      world.handleStartBtnClick(enteredWeights, animationSpeed, animationIterations);
+      lockDownloadButton();
+      world.handleStartBtnClick(
+        enteredWeights, 
+        animationSpeed, 
+        animationIterations
+      );
     }
   });
 
@@ -102,6 +119,14 @@ function initializeEventListener(){
   fileInput.addEventListener('change', handleFileSelect);
 }
 
+function lockDownloadButton(){
+  downloadBtn.disabled = true;
+}
+
+function unlockDownloadButton(){
+  downloadBtn.disabled = false;
+}
+
 function handleSwitchModelBtnClick(btn){
   console.log(btn);
   if(!btn.classList.contains("switch-model-btn-active")){
@@ -123,21 +148,6 @@ function updateActiveModelReference(){
   activeModel = document.getElementsByClassName('switch-model-btn-active')[0];
 }
 
-function initializeWeightInputEventListener(){
-  for(let i=0; i < actionWeightInputs.length; i++){
-    actionWeightInputs[i].removeEventListener("input", handleInput);
-  }
-  for(let i=0; i < actionWeightInputs.length; i++){
-    console.log(i);
-    actionWeightInputs[i].addEventListener("input", (event) => 
-      handleInput(event, i));
-  }
-}
-
-function initializeEnteredWeights(){
-  enteredWeights.push(0);
-}
-
 function sumUpWeights(){
   let sum = 0;
 
@@ -154,22 +164,24 @@ function updateUnassignedWeights(){
 }
 
 function handleInput(event, index){
-  if(actionWeightInputs[index].value > 100){
-    actionWeightInputs[index].value = 100;
+  console.log(Array.from(actionWeightInputs));
+  const input = Array.from(actionWeightInputs).find(input => input.id === index)
+  if(input.value > 100){
+    input.value = 100;
   }
-  else if(actionWeightInputs[index].value < 0){
-    actionWeightInputs[index].value = 0;
-  }
-
-  while(actionWeightInputs[index].value.length > 1 && actionWeightInputs[index].value[0] == '0'){
-    actionWeightInputs[index].value = actionWeightInputs[index].value.slice(1);
+  else if(input.value < 0){
+    input.value = 0;
   }
 
-  if(actionWeightInputs[index].value === ""){
-    actionWeightInputs[index].value = 0;
+  while(input.value.length > 1 && input.value[0] == '0'){
+    input.value = input.value.slice(1);
   }
 
-  enteredWeights[index] = parseFloat(actionWeightInputs[index].value);
+  if(input.value === ""){
+    input.value = 0;
+  }
+
+  enteredWeights[Array.from(actionWeightInputs).indexOf(input)] = parseFloat(input.value);
   updateUnassignedWeights();
 }
 
@@ -199,10 +211,14 @@ function processFileContent(fileContent, fileName) {
   if(fileName.toLowerCase().endsWith('.fbx') || 
     fileName.toLowerCase().endsWith('.bvh') ||
     fileName.toLowerCase().endsWith('.glb')){
-    createWeightInput(weightInputWrapper, fileName);
-    initializeEnteredWeights();
-    initializeWeightInputEventListener();
-    world.handleFileUpload(fileContent, fileName);
+      const file = {
+        name: fileName, 
+        content: fileContent
+      };
+    const input = createWeightInput(weightInputWrapper, fileName);
+    world.handleFileUpload(file);
+
+    fileAndInputArray.push({file: file, input: input});
   }
   else{
     alert("File must be .fbxm, .glb or .bvh!");
@@ -211,17 +227,18 @@ function processFileContent(fileContent, fileName) {
 }
 
 function createWeightInput(parentElement, labelContent){
-  console.log(enteredWeights);
   const label = document.createElement('label');
   label.textContent = labelContent.slice(0, -4);
 
   const input = document.createElement('input');
   input.type = 'number';
   input.classList.add('weight-input');
-  input.id = 'weight-input-' + enteredWeights.length;
+  input.id = enteredWeights.length;
   input.min = '0';
   input.max = '100';
   input.value = '0';
+
+  enteredWeights.push(0);
 
   const deleteButton = document.createElement('button');
   deleteButton.classList.add('delete-button');
@@ -240,17 +257,28 @@ function createWeightInput(parentElement, labelContent){
   inputDeleteWrapper.appendChild(deleteButton);
   
   parentElement.appendChild(div);
+
+  actionWeightInputs = document.getElementsByClassName("weight-input");
   
   deleteButton.addEventListener('click', (event) => addDeleteEvent(event, input, parentElement, div));
+  input.addEventListener("input", (event) => 
+    handleInput(event, input.id)
+  );
+
+  return input;
 }
 
 function addDeleteEvent(event, input, parentElement, div) {
   parentElement.removeChild(div);
   actionWeightInputs = document.getElementsByClassName("weight-input");
-  enteredWeights.splice(input.id.charAt(input.id.length -1), 1);
-  initializeWeightInputEventListener();
+
+  enteredWeights.splice(input.id, 1);
   updateUnassignedWeights();
-  world.handleFileRemove(input.id.charAt(input.id.length -1));
+  const fileToRemove = 
+    fileAndInputArray.find(element => element.input === input).file;
+
+  console.log(fileToRemove);
+  world.handleFileRemove(fileToRemove);
   console.log(enteredWeights);
 }
 
