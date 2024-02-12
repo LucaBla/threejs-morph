@@ -28,9 +28,6 @@ async function morphAnimations(fileArray, weights, model, isHipsRotationLocked){
     findTrackInBaseAnimations("Hips.quaternion").values = baseAnimation.tracks[0].values.map(() => 0);
   }
 
-
-  console.log(baseAnimation);
-
   return baseAnimation;
 }
 

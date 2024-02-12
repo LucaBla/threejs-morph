@@ -24,17 +24,17 @@ async function loadModel(modelPath){
   updateBoneNamesForModel(model);
   updateMeshes(model);
   model.name = "Model";
-  console.log(model);
   return model;
 }
 
 async function loadGLTFAnimation(animationPath){
   const loader = new GLTFLoader();
 
-  console.log(animationPath);
   const animation = await loader.parseAsync(animationPath);
-  console.log(animation);
+
   updateBoneNamesForAnimation(animation.animations[0]);
+
+  console.log(animation);
   return animation.animations[0];
 }
 
@@ -43,6 +43,7 @@ function updateScale(model){
 }
 
 function updateBoneNamesForModel(parent){
+  // removes the mixamo-prefix from the bone names
   if(parent.children.length === 0 || parent.children === undefined){
     return;
   }
@@ -55,12 +56,12 @@ function updateBoneNamesForModel(parent){
 }
 
 function updateBoneNamesForAnimation(animation){
+  // removes the mixamo-prefix from the track names
   animation.tracks.forEach(track =>{
     if(containsMixamo(track.name)){
       track.name = removeMixamorigPrefix(track.name);
     }
   })
-  console.log(animation);
 }
 
 function updateMeshes(parent){
@@ -69,9 +70,6 @@ function updateMeshes(parent){
       child.castShadow = false;
       child.receiveShadow = false;
       child.frustumCulled = false;
-      //child.material.transparent = false;
-      //child.material.side = THREE.DoubleSide;
-      //child.material.alphaTest = 0.006;
       child.material.opacity = 1;
     }
   });

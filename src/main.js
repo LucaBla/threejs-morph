@@ -128,7 +128,6 @@ function unlockDownloadButton(){
 }
 
 function handleSwitchModelBtnClick(btn){
-  console.log(btn);
   if(!btn.classList.contains("switch-model-btn-active")){
     [...switchModelBtns].forEach(tempBtn => {
       if(tempBtn.classList.contains("switch-model-btn-active")){

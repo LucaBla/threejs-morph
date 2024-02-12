@@ -37,16 +37,17 @@ class World {
     scene = createScene();
     renderer = createRenderer();
     controls = createControls(camera, renderer.domElement);
+
     container.append(renderer.domElement);
 
-
-    const cube = createCube();
     const {ambientLight, light} = createLights();
 
     scene.add(light, ambientLight);
-    //scene.add(cube);
 
     const resizer = new Resizer(container, camera, renderer);
+    resizer.onResize = () => {
+      this.render();
+    };
   }
 
   async init(modelIdentifier){
@@ -70,29 +71,6 @@ class World {
     return skeletonMixer;
   }
 
-  async createAnimationsArray(){
-    console.log(fileArray);
-    let animationsArray = [];
-
-    for (const animationFile of fileArray) {
-      console.log(animationFile);
-      let animation = null;
-
-      if(animationFile.name.toLowerCase().endsWith('.fbx')){
-        animation = await loadFBXAnimation(animationFile.content);
-      }
-      else if(animationFile.name.toLowerCase().endsWith('.bvh')){
-        animation = await loadBVHAnimation(animationFile.content);
-      }
-      else if(animationFile.name.toLowerCase().endsWith('.glb')){
-        animation = await loadGLTFAnimation(animationFile.content);
-      }
-      animationsArray.push(animation);
-    }
-
-    return animationsArray;
-  }
-
   async updateModel(modelIdentifier, showSkeleton = undefined){
     let newModel = null;
     if(modelIdentifier === "man"){
@@ -110,10 +88,8 @@ class World {
 
     if(newModel !== null){
       this.removeOldModel();
-      //fbxLoadingManager.onLoad = this.render;
       model = newModel;
       model.position.set(0,-80,0);
-      //model.scale.set(.01,.01,.01);
       scene.add(model);
       helper = new SkeletonHelper(model);
       if(showSkeleton){
@@ -125,51 +101,64 @@ class World {
 
   removeOldModel(){
     if(model !== undefined){
-      console.log("model removed");
       scene.remove(model);
       scene.remove(helper);
 
       helper.dispose();
-      //model.dispose();
     }
+  }
+
+  validateEnteredWeights(enteredWeights){
+    for(const number of enteredWeights){
+      if(isNaN(number)){
+        alert("Please enter valid numbers!");
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  setAnimationOptions(animation, animationIterations, animationSpeed){
+    if(animationIterations === 0){
+      animation.setLoop(LoopRepeat, Infinity);
+    }
+    else{
+      animation.setLoop(LoopRepeat, animationIterations);
+    }
+    animation.setEffectiveWeight(1);
+    animation.setEffectiveTimeScale(animationSpeed);
   }
 
   async handleStartBtnClick(enteredWeights, animationSpeed, 
       animationIterations){
     animationsToDownload = [];
-    for(const number of enteredWeights){
-      if(isNaN(number)){
-        alert("Please enter valid numbers!");
-        return;
-      }
+
+    if(!this.validateEnteredWeights(enteredWeights)){
+      return
     }
+
     let morphedAnimation = await morphAnimations(
       fileArray, 
       enteredWeights, 
       model,
       lockHipRotation
     );
+
     mixer = new AnimationMixer(model);
     const clippedMorphedAnim = mixer.clipAction(morphedAnimation);
 
-    if(animationIterations === 0){
-      clippedMorphedAnim.setLoop(LoopRepeat, Infinity);
-    }
-    else{
-      clippedMorphedAnim.setLoop(LoopRepeat, animationIterations);
-    }
-    clippedMorphedAnim.setEffectiveWeight(1);
-    clippedMorphedAnim.setEffectiveTimeScale(animationSpeed);
-    clippedMorphedAnim.play();
+    this.setAnimationOptions(
+      clippedMorphedAnim, 
+      animationIterations, 
+      animationSpeed
+    );
 
-    mixer.addEventListener('finished', ()=>{
-      console.log("Finished");
-    })
+    clippedMorphedAnim.play();
 
     animationsToDownload.push(clippedMorphedAnim._clip);
 
     document.dispatchEvent(animationsMorphedEvent);
-    //this.initializeAnimations(model, enteredWeights, animationSpeed, animationIterations);
   }
 
   handleDownloadBtnClick(){

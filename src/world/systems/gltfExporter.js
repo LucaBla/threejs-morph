@@ -5,38 +5,25 @@ const exporter = new GLTFExporter();
 
 function exportGLTF(scene, animationsToDownload){
   
-  // exporter.parse(
-  //   scene,
-  //   function ( gltf ) {
-  //     console.log( gltf );
-  //     downloadJSON( gltf );
-  //   },
-  //   function ( error ) {
-  //     console.log( 'An error happened' );
-  //   },
-  //   options
-  // );
-  
   const options = {
-    binary: true, // Exportiere als binäre GLB-Datei (statt GLTF)
-    trs: false,   // True, wenn Transformation, Rotation und Skalierung gespeichert werden sollen
-    onlyVisible: true, // True, wenn nur sichtbare Objekte exportiert werden sollen
-    truncateDrawRange: true, // True, um DrawRange in Geometrien zu kürzen
-    embedImages: true, // True, um Texturen als Base64-Inline zu speichern
-    animations: animationsToDownload, // Array von Animationen, die exportiert werden sollen
+    binary: true, // if true, export as binary
+    trs: false,   // if true, saves transform, rotation and scale
+    onlyVisible: true, // if true, exports only visible objects
+    truncateDrawRange: true, // if true, shortens the DrawRange in geometries
+    embedImages: true, // if true, saves textures as Base64-Inline
+    animations: animationsToDownload, // the array of animations to be exported
 };
 
 const exportScene = createExportScene(scene);
 
-console.log(exportScene);
-
 exporter.parse(exportScene, function (result) {
   if (result instanceof ArrayBuffer) {
-      // result ist eine ArrayBuffer, den du beispielsweise in eine Datei speichern kannst
+      // ArrayBuffer can be saved in File
       saveArrayBuffer(result, 'morphedAnimation.glb');
       console.log(result);
   } else {
-      // result könnte auch ein JSON-Objekt sein, wenn binary: false im options-Objekt gesetzt ist
+      // result could not be converted to ArrayBuffer
+      // try to return it as a JSON-Object
       console.error('Fehler beim Exportieren der GLB-Datei.');
       console.log(JSON.stringify( result, null, 2 ));
       console.log(typeof result);
@@ -50,7 +37,10 @@ exporter.parse(exportScene, function (result) {
 }
 
 function saveArrayBuffer(buffer, filename) {
-  const blob = new Blob([buffer], { type: 'application/octet-stream' });
+  // blob is a file-like object of raw data
+  // the file can only be downloaded by clicking a link
+  // so a link to the file is created and instantly clicked by js
+  const blob = new Blob([buffer]);
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = filename;
@@ -66,42 +56,18 @@ function createExportScene(scene){
 }
 
 function clearUpExportScene(exportScene){
+  // remove everything from the export scene
+  // expect the skeleton of the model
   exportScene.children.forEach(child => {
     if(child.name === "Model"){
       child.children.forEach(subChild =>{
         if(subChild instanceof Bone){
           child.children = [subChild];
-          console.log(typeof child.children[0]);
+          exportScene.children = [child];
         }
       })
     }
   });
 }
-
-// function downloadJSON( json, filename ) {
-
-// 	saveString( JSON.stringify( json ), filename );  
-
-// }
-
-// var link = document.createElement( 'a' );
-// link.style.display = 'none';
-// document.body.appendChild( link ); // Firefox workaround, see #6594
-
-// function save( blob, filename ) {
-
-// 	link.href = URL.createObjectURL( blob );
-// 	link.download = filename;
-// 	link.click();
-
-// 	// URL.revokeObjectURL( url ); breaks Firefox...
-
-// }
-
-// function saveString( text, filename ) {
-
-// 	save( new Blob( [ text ], { type: 'text/plain' } ), filename );
-
-// }
 
 export {exportGLTF};

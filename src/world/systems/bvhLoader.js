@@ -4,12 +4,6 @@ import { renamingMap } from '../components/renamingMap';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 async function loadBVHAnimation(animationBuffer){
-  // const loader = new BVHLoader();
-  // console.log(animationPath);
-
-  // //const animation = await loader.loadAsync(animationPath);
-  // const animation = await loader.parse(animationPath);
-  // return animation.animations[0];
   return new Promise((resolve, reject) => {
     const loader = new BVHLoader();
 
@@ -17,8 +11,6 @@ async function loadBVHAnimation(animationBuffer){
     const animation = loader.parse(text);
     
     if (animation) {
-      //animation.clip.tracks = animation.clip.tracks.filter(track => !(track instanceof VectorKeyframeTrack));
-      //animation.skeleton.bones[0].position.set(0,0,0);
       updateBoneNamesForAnimation(animation.clip);
       updateBoneNamesForSkeleton(animation.skeleton);
       resolve(animation);
@@ -94,10 +86,6 @@ function retargetBVH(animation, model){
   
   const options = {
     fps: fps,
-    //useTargetMatrix: true,
-    //preservePosition: true,
-    //preserveHipPosition: false,
-    //useFirstFramePosition: true
   };
   
   const newClip = SkeletonUtils.retargetClip(model.children[1], skeletonHelper, clip, options);
