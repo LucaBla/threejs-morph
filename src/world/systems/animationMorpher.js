@@ -15,6 +15,7 @@ async function morphAnimations(fileArray, weights, model, isHipsRotationLocked){
 
   let weightsCopy = removeZeroWeightAnimationsFromArray(weights);
   baseAnimation = findBaseAnimation();
+  console.log(baseAnimation);
   trackNameList = [];
   fillTrackNameList();
   normalizeKeyFrameTrackValueArrays();
@@ -27,6 +28,8 @@ async function morphAnimations(fileArray, weights, model, isHipsRotationLocked){
   if(isHipsRotationLocked){
     findTrackInBaseAnimations("Hips.quaternion").values = baseAnimation.tracks[0].values.map(() => 0);
   }
+
+  console.log(baseAnimation);
 
   return baseAnimation;
 }
@@ -391,6 +394,13 @@ function normalizeTracksValueArray(track, timesArray){
     return null
   }
 
+  console.log(track.name);
+  console.log(track.times.length);
+  if(track.values.length === 0){
+    console.error(`Track${track.name} values array is empty!`);
+    return track.values;
+  }
+
   let valueArray = track.values;
   let newArray = [];
   let componentSize;
@@ -577,7 +587,7 @@ function findBaseAnimation(){
     }
   });
 
-  return newBaseAnimation.clone();
+  return newBaseAnimation;
 }
 
 export { morphAnimations}

@@ -16,6 +16,8 @@ function exportGLTF(scene, animationsToDownload){
 
 const exportScene = createExportScene(scene);
 
+console.log(animationsToDownload);
+
 exporter.parse(exportScene, function (result) {
   if (result instanceof ArrayBuffer) {
       // ArrayBuffer can be saved in File

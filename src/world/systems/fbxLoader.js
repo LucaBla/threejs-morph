@@ -31,8 +31,8 @@ async function loadFBXAnimation(animationPath){
   const loader = new FBXLoader();
 
   const animation = await loader.parse(animationPath);
-  console.log(animation);
   updateBoneNamesForAnimation(animation.animations[0]);
+  console.log(animation);
 
   return animation.animations[0];
 }
